@@ -101,8 +101,9 @@ st.set_page_config(page_title="SK에너지 경쟁사 분석 대시보드", page_
 # ==========================
 
 # API 키 설정
-DART_API_KEY = "9a153f4344ad2db546d651090f78c8770bd773cb"
-GEMINI_API_KEY = "AIzaSyB176ys4MCjEs8R0dv15hMqDE2G-9J0qIA"
+DART_API_KEY = st.secrets.get("DART_API_KEY", "")
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+
 
 # 구글시트 설정 (수정됨)
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/16g1G89xoxyqF32YLMD8wGYLnQzjq2F_ew6G1AHH4bCA/edit?usp=sharing"
