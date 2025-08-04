@@ -1,0 +1,16 @@
+streamlit
+pandas
+requests
+beautifulsoup4
+plotly
+feedparser
+google-generativeai
+reportlab
+openpyxl
+python-dateutil
+lxml
+gspread
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+numpy
