@@ -1684,15 +1684,6 @@ SK에너지 관련 뉴스 분석:
 # 차트 생성 함수들
 # ==========================
 
-import plotly.express as px
-import plotly.graph_objects as go
-
-def get_company_color(company, companies):
-    # 임시 색상 매핑 함수 (사용자 환경에 맞게 수정 필요)
-    base_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
-    color_map = {c: base_colors[i % len(base_colors)] for i, c in enumerate(companies)}
-    return color_map.get(company, '#333333')
-
 def create_sk_bar_chart(chart_df):
     """SK에너지 강조 막대 차트"""
     if chart_df.empty or not PLOTLY_AVAILABLE:
@@ -1886,7 +1877,7 @@ def create_quarterly_trend_chart(quarterly_df):
     )
     
     return fig
-
+    
 # ==========================
 # PDF 생성 함수 (쪽번호 추가 + 오류 수정)
 # ==========================
