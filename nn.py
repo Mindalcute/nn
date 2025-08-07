@@ -1684,87 +1684,35 @@ SK에너지 관련 뉴스 분석:
 # 차트 생성 함수들
 # ==========================
 
-import plotly.express as px
-import plotly.graph_objects as go
-
-# 색상 매핑 함수 (필요시 수정)
-def get_company_color(company, all_companies):
-    pastel_colors = [
-        '#AEC6CF', '#FFB347', '#77DD77', '#F49AC2', '#B39EB5', '#FF6961', '#FDFD96', '#CFCFC4'
-    ]
-    index = list(all_companies).index(company) % len(pastel_colors)
-    return pastel_colors[index]
-
-def create_sk_bar_chart(chart_df):
-    """SK에너지 강조 막대 차트"""
-    if chart_df.empty:
-        return None
-
-    companies = chart_df['회사'].unique() if '회사' in chart_df.columns else []
-    color_discrete_map = {
-        company: get_company_color(company, companies) for company in companies
-    }
-
-    fig = px.bar(
-        chart_df,
-        x='지표' if '지표' in chart_df.columns else chart_df.columns[0],
-        y='수치' if '수치' in chart_df.columns else chart_df.columns[1],
-        color='회사' if '회사' in chart_df.columns else None,
-        title="💼 SK에너지 vs 경쟁사 수익성 지표 비교",
-        height=450,
-        text='수치' if '수치' in chart_df.columns else None,
-        color_discrete_map=color_discrete_map,
-        barmode='group'
-    )
-
-    if '수치' in chart_df.columns:
-        fig.update_traces(
-            texttemplate='%{text:.2f}%',
-            textposition='outside',
-            textfont=dict(size=12)
-        )
-
-    fig.update_layout(
-        yaxis=dict(title="수치", title_font_size=14, tickfont=dict(size=12)),
-        xaxis=dict(title="재무 지표", tickangle=45, title_font_size=14, tickfont=dict(size=12)),
-        legend=dict(font=dict(size=12)),
-        title_font_size=16,
-        font=dict(size=12)
-    )
-
-    return fig
-
 def create_sk_radar_chart(chart_df):
-    """SK에너지 중심 레이더 차트 (정규화 버전)"""
-    if chart_df.empty:
+    """SK에너지 중심 레이더 차트 (정규화 적용)"""
+    if chart_df.empty or not PLOTLY_AVAILABLE:
         return None
 
-    companies = chart_df['회사'].unique() if '회사' in chart_df.columns else []
-    metrics = chart_df['지표'].unique() if '지표' in chart_df.columns else []
+    # 정규화 적용
+    norm_df = chart_df.copy()
+    if '수치' in norm_df.columns:
+        max_vals = norm_df.groupby('지표')['수치'].transform('max')
+        min_vals = norm_df.groupby('지표')['수치'].transform('min')
+        norm_df['정규화수치'] = (norm_df['수치'] - min_vals) / (max_vals - min_vals + 1e-6)
 
-    # 지표별 정규화 수행
-    normalized_df = chart_df.copy()
-    for metric in metrics:
-        metric_mask = normalized_df['지표'] == metric
-        metric_values = normalized_df.loc[metric_mask, '수치']
-        min_val = metric_values.min()
-        max_val = metric_values.max()
-        if max_val != min_val:
-            normalized_df.loc[metric_mask, '정규화수치'] = (metric_values - min_val) / (max_val - min_val)
-        else:
-            normalized_df.loc[metric_mask, '정규화수치'] = 0.5
+    companies = norm_df['회사'].unique() if '회사' in norm_df.columns else []
+    metrics = norm_df['지표'].unique() if '지표' in norm_df.columns else []
 
     fig = go.Figure()
 
-    for company in companies:
-        company_data = normalized_df[normalized_df['회사'] == company]
+    for i, company in enumerate(companies):
+        company_data = norm_df[norm_df['회사'] == company]
         values = company_data['정규화수치'].tolist()
-        values.append(values[0])  # 닫힌 도형
 
-        theta_labels = list(metrics) + [metrics[0]]
+        if values:
+            values.append(values[0])  # 도형 닫기
+            theta_labels = list(metrics) + [metrics[0]]
+        else:
+            continue
 
+        # 색상 및 강조
         color = get_company_color(company, companies)
-
         if 'SK' in company:
             line_width = 5
             marker_size = 12
@@ -1787,9 +1735,8 @@ def create_sk_radar_chart(chart_df):
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[0, 1],
+                range=[0, 1.05],
                 tickmode='linear',
-                tick0=0,
                 dtick=0.2,
                 tickfont=dict(size=14)
             ),
