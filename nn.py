@@ -1684,44 +1684,79 @@ SK에너지 관련 뉴스 분석:
 # 차트 생성 함수들
 # ==========================
 
-def create_sk_radar_chart(chart_df):
-    """SK에너지 중심 레이더 차트 (정규화 적용)"""
+def create_sk_bar_chart(chart_df):
+    """SK에너지 강조 막대 차트"""
     if chart_df.empty or not PLOTLY_AVAILABLE:
         return None
+    
+    # 파스텔 색상 매핑
+    companies = chart_df['회사'].unique() if '회사' in chart_df.columns else []
+    color_discrete_map = {}
+    for company in companies:
+        color_discrete_map[company] = get_company_color(company, companies)
+    
+    fig = px.bar(
+        chart_df,
+        x='지표' if '지표' in chart_df.columns else chart_df.columns[0],
+        y='수치' if '수치' in chart_df.columns else chart_df.columns[1],
+        color='회사' if '회사' in chart_df.columns else None,
+        title="💼 SK에너지 vs 경쟁사 수익성 지표 비교",
+        height=450,
+        text='수치' if '수치' in chart_df.columns else None,
+        color_discrete_map=color_discrete_map,
+        barmode='group'
+    )
+    
+    if '수치' in chart_df.columns:
+        fig.update_traces(
+            texttemplate='%{text:.2f}%',
+            textposition='outside',
+            textfont=dict(size=12)
+        )
+    
+    fig.update_layout(
+        yaxis=dict(title="수치", title_font_size=14, tickfont=dict(size=12)),
+        xaxis=dict(title="재무 지표", tickangle=45, title_font_size=14, tickfont=dict(size=12)),
+        legend=dict(font=dict(size=12)),
+        title_font_size=16,
+        font=dict(size=12)
+    )
+    
+    return fig
 
-    # 정규화 적용
-    norm_df = chart_df.copy()
-    if '수치' in norm_df.columns:
-        max_vals = norm_df.groupby('지표')['수치'].transform('max')
-        min_vals = norm_df.groupby('지표')['수치'].transform('min')
-        norm_df['정규화수치'] = (norm_df['수치'] - min_vals) / (max_vals - min_vals + 1e-6)
-
-    companies = norm_df['회사'].unique() if '회사' in norm_df.columns else []
-    metrics = norm_df['지표'].unique() if '지표' in norm_df.columns else []
-
+def create_sk_radar_chart(chart_df):
+    """SK에너지 중심 레이더 차트"""
+    if chart_df.empty or not PLOTLY_AVAILABLE:
+        return None
+    
+    companies = chart_df['회사'].unique() if '회사' in chart_df.columns else []
+    metrics = chart_df['지표'].unique() if '지표' in chart_df.columns else []
+    
     fig = go.Figure()
-
+    
     for i, company in enumerate(companies):
-        company_data = norm_df[norm_df['회사'] == company]
-        values = company_data['정규화수치'].tolist()
-
+        company_data = chart_df[chart_df['회사'] == company] if '회사' in chart_df.columns else chart_df
+        values = company_data['수치'].tolist() if '수치' in company_data.columns else []
+        
         if values:
-            values.append(values[0])  # 도형 닫기
-            theta_labels = list(metrics) + [metrics[0]]
+            values.append(values[0])  # 닫힌 도형을 위해 첫 번째 값을 마지막에 추가
+            theta_labels = list(metrics) + [metrics[0]] if len(metrics) > 0 else ['지표1']
         else:
             continue
-
-        # 색상 및 강조
+        
+        # 파스텔 색상 적용
         color = get_company_color(company, companies)
+        
+        # SK에너지는 특별한 스타일
         if 'SK' in company:
             line_width = 5
             marker_size = 12
-            name_style = f"**{company}**"
+            name_style = f"**{company}**"  # 굵게 표시
         else:
             line_width = 3
             marker_size = 8
             name_style = company
-
+        
         fig.add_trace(go.Scatterpolar(
             r=values,
             theta=theta_labels,
@@ -1730,21 +1765,24 @@ def create_sk_radar_chart(chart_df):
             line=dict(width=line_width, color=color),
             marker=dict(size=marker_size, color=color)
         ))
-
+    
+    max_value = chart_df['수치'].max() if '수치' in chart_df.columns and not chart_df.empty else 10
+    
     fig.update_layout(
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[0, 1.05],
+                range=[0, max_value * 1.2],
                 tickmode='linear',
-                dtick=0.2,
+                tick0=0,
+                dtick=max_value * 0.2,
                 tickfont=dict(size=14)
             ),
             angularaxis=dict(
                 tickfont=dict(size=16)
             )
         ),
-        title="🎯 SK에너지 vs 경쟁사 수익성 지표 비교 (정규화)",
+        title="🎯 SK에너지 vs 경쟁사 수익성 지표 비교",
         height=600,
         showlegend=True,
         legend=dict(
@@ -1758,39 +1796,87 @@ def create_sk_radar_chart(chart_df):
         title_font_size=20,
         font=dict(size=14)
     )
-
+    
     return fig
 
+def create_quarterly_trend_chart(quarterly_df):
+    """분기별 추이 차트 생성"""
+    if quarterly_df.empty or not PLOTLY_AVAILABLE:
+        return None
     
-# ==========================
-# DART 출처 테이블 생성 함수 (링크 개선)
-# ==========================
-
-def create_dart_source_table(dart_collector, collected_companies, analysis_year):
-    """DART 출처 정보 테이블 생성 (클릭 가능한 링크)"""
-    if not hasattr(dart_collector, 'source_tracking') or not dart_collector.source_tracking:
-        return pd.DataFrame()
+    fig = go.Figure()
+    companies = quarterly_df['회사'].unique()
     
-    source_data = []
-    for company, info in dart_collector.source_tracking.items():
-        if company in collected_companies:
-            # 유효한 DART 링크 생성
-            rcept_no = info.get('rcept_no', 'N/A')
-            if rcept_no and rcept_no != 'N/A':
-                dart_url = f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcept_no}"
-            else:
-                dart_url = "https://dart.fss.or.kr"
-            
-            source_data.append({
-                '회사명': company,
-                '보고서 유형': info.get('report_type', '재무제표'),
-                '연도': info.get('year', analysis_year),
-                '회사코드': info.get('company_code', 'N/A'),
-                'DART 바로가기': dart_url,
-                '접수번호': rcept_no
-            })
+    for company in companies:
+        company_data = quarterly_df[quarterly_df['회사'] == company]
+        
+        # 파스텔 색상 적용
+        line_color = get_company_color(company, companies)
+        
+        # SK에너지는 특별한 스타일
+        if 'SK' in company:
+            line_width = 4
+            marker_size = 10
+            name_style = f"**{company}**"
+        else:
+            line_width = 2
+            marker_size = 6
+            name_style = company
+        
+        # 매출액 추이
+        if '매출액' in company_data.columns:
+            fig.add_trace(go.Scatter(
+                x=company_data['분기'],
+                y=company_data['매출액'],
+                mode='lines+markers',
+                name=f"{name_style} 매출액",
+                line=dict(color=line_color, width=line_width),
+                marker=dict(size=marker_size, color=line_color),
+                yaxis='y'
+            ))
+        
+        # 영업이익률 추이 (보조 축)
+        if '영업이익률' in company_data.columns:
+            fig.add_trace(go.Scatter(
+                x=company_data['분기'],
+                y=company_data['영업이익률'],
+                mode='lines+markers',
+                name=f"{name_style} 영업이익률",
+                line=dict(color=line_color, width=line_width, dash='dash'),
+                marker=dict(size=marker_size, color=line_color, symbol='diamond'),
+                yaxis='y2'
+            ))
     
-    return pd.DataFrame(source_data)
+    fig.update_layout(
+        title="📈 분기별 재무성과 추이 분석 (SK에너지 vs 경쟁사)",
+        xaxis=dict(
+            title="분기",
+            title_font_size=16,
+            tickfont=dict(size=14)
+        ),
+        yaxis=dict(
+            title="매출액 (조원)",
+            side="left",
+            title_font_size=16,
+            tickfont=dict(size=14)
+        ),
+        yaxis2=dict(
+            title="영업이익률 (%)",
+            side="right",
+            overlaying="y",
+            title_font_size=16,
+            tickfont=dict(size=14)
+        ),
+        height=600,
+        hovermode='x unified',
+        legend=dict(
+            font=dict(size=14)
+        ),
+        title_font_size=20,
+        font=dict(size=14)
+    )
+    
+    return fig
 
 # ==========================
 # PDF 생성 함수 (쪽번호 추가 + 오류 수정)
