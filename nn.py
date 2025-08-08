@@ -1685,9 +1685,8 @@ SK에너지 관련 뉴스 분석:
 # ==========================
 
 def create_sk_bar_chart(chart_df):
-    """SK에너지 강조 막대 차트"""
-    if chart_df.empty or not PLOTLY_AVAILABLE:
-        return None
+    st.write("=== chart_df columns inside function ===")
+    st.write(chart_df.columns.tolist())
     
     # 파스텔 색상 매핑
     companies = chart_df['회사'].unique() if '회사' in chart_df.columns else []
