@@ -2677,13 +2677,20 @@ def main():
         with col2:
             st.write("**📧 이메일 서비스 바로가기**")
 
-            mail_providers = {
-                "네이버": "https://mail.naver.com/",
-                "구글(Gmail)": "https://mail.google.com/",
-                "다음": "https://mail.daum.net/",
-                "네이트": "https://mail.nate.com/",
-                "야후": "https://mail.yahoo.com/"
-            }
+mail_providers = {
+    "네이버": "https://mail.naver.com/",
+    "구글(Gmail)": "https://mail.google.com/",
+    "다음": "https://mail.daum.net/",
+    "네이트": "https://mail.nate.com/",
+    "야후": "https://mail.yahoo.com/",
+    "아웃룩(Outlook)": "https://outlook.live.com/",
+    "프로톤메일(ProtonMail)": "https://mail.proton.me/",
+    "조호메일(Zoho Mail)": "https://mail.zoho.com/",
+    "GMX 메일": "https://www.gmx.com/",
+    "아이클라우드(iCloud Mail)": "https://www.icloud.com/mail",
+    "메일닷컴(Mail.com)": "https://www.mail.com/",
+    "AOL 메일": "https://mail.aol.com/"
+}
 
             selected_provider = st.selectbox(
                 "메일 서비스 선택",
