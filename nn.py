@@ -2715,7 +2715,8 @@ def main():
     # ==========================
 with tabs[3]:
     st.subheader("📄 통합 보고서 생성 & 이메일 발송")
-
+    # 보고서 생성 및 이메일 발송 관련 코드
+    
     # 2열 레이아웃: 보고서 생성 + 메일 서비스 바로가기
     col1, col2 = st.columns(2)
 
@@ -2736,7 +2737,7 @@ with tabs[3]:
                         financial_data=financial_data_for_report,
                         news_data=st.session_state.get('news_data'),
                         insights=st.session_state.get('financial_insight') or st.session_state.get('news_insight')
-                    )
+                        )
                     filename = "SK_Energy_Analysis_Report.pdf"
                     mime_type = "application/pdf"
                 else:
