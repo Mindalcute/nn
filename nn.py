@@ -2673,100 +2673,49 @@ def main():
     # 탭4: 보고서 생성 및 이메일 발송 (개선된 UI + PDF 쪽번호)
     # ==========================
 
-# PDF 생성 함수 (한글 폰트 임베딩)
-def create_enhanced_pdf_report(financial_data, news_data=None, insights=None):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.add_font('NanumGothic', '', 'NanumGothic.ttf', uni=True)  # 폰트파일 위치 맞게 조정
-    pdf.set_font('NanumGothic', '', 14)
-
-    pdf.cell(0, 10, 'SK 에너지 통합 분석 보고서', ln=True)
-    pdf.ln(10)
-
-    if financial_data is not None:
-        pdf.cell(0, 10, '■ 재무 데이터 개요', ln=True)
-        for idx, row in financial_data.head(10).iterrows():
-            line = f"{row.get('회사', '')}: 매출 {row.get('매출', '')}원"
-            pdf.cell(0, 8, line, ln=True)
-    else:
-        pdf.cell(0, 10, '재무 데이터가 없습니다.', ln=True)
-
-    pdf.ln(10)
-
-    if insights:
-        pdf.multi_cell(0, 10, f"■ 인사이트\n{insights}")
-    else:
-        pdf.cell(0, 10, '인사이트 정보가 없습니다.', ln=True)
-
-    return pdf.output(dest='S').encode('latin1')
-
-
-# Excel 생성 함수
-def create_excel_report(financial_data, news_data=None, insights=None):
-    output = BytesIO()
-
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        if financial_data is not None:
-            financial_data.to_excel(writer, sheet_name='Financial Data', index=False)
-        else:
-            pd.DataFrame().to_excel(writer, sheet_name='Financial Data')
-
-        if insights:
-            pd.DataFrame([insights], columns=['인사이트']).to_excel(writer, sheet_name='Insights', index=False)
-        else:
-            pd.DataFrame(['인사이트 없음'], columns=['인사이트']).to_excel(writer, sheet_name='Insights', index=False)
-
-        if news_data is not None:
-            news_data.to_excel(writer, sheet_name='News Data', index=False)
-
-    return output.getvalue()
-
-
-def main():
-    tabs = st.tabs(["데이터 업로드", "분석", "시각화", "통합 보고서 생성 & 이메일 발송"])
-
     with tabs[3]:
         st.subheader("📄 통합 보고서 생성 & 이메일 발송")
-
+        
+        # 2열 레이아웃: PDF 생성 + 이메일 입력
         col1, col2 = st.columns([1, 1])
-
+        
         with col1:
             st.write("**📥 보고서 다운로드**")
+            # 보고서 형식 선택
             report_format = st.radio("파일 형식 선택", ["PDF", "Excel"], horizontal=True)
-
-            if st.button("📥 보고서 생성", key="make_report"):
+            
+            if st.button("📥 보고서 생성", type="primary", key="make_report"):
+                # 데이터 우선순위: DART 자동 > 수동 업로드
                 financial_data_for_report = None
-                if st.session_state.get('financial_data') is not None and not st.session_state.financial_data.empty:
+                if st.session_state.financial_data is not None and not st.session_state.financial_data.empty:
                     financial_data_for_report = st.session_state.financial_data
-                elif st.session_state.get('manual_financial_data') is not None and not st.session_state.manual_financial_data.empty:
+                elif st.session_state.manual_financial_data is not None and not st.session_state.manual_financial_data.empty:
                     financial_data_for_report = st.session_state.manual_financial_data
-
-                news_data = st.session_state.get('news_data', None)
-                insights = st.session_state.get('financial_insight') or st.session_state.get('news_insight')
-
+                
                 with st.spinner("📄 보고서 생성 중..."):
                     if report_format == "PDF":
                         file_bytes = create_enhanced_pdf_report(
                             financial_data=financial_data_for_report,
-                            news_data=news_data,
-                            insights=insights
+                            news_data=st.session_state.news_data,
+                            insights=st.session_state.financial_insight or st.session_state.news_insight
                         )
                         filename = "SK_Energy_Analysis_Report.pdf"
                         mime_type = "application/pdf"
                     else:
                         file_bytes = create_excel_report(
                             financial_data=financial_data_for_report,
-                            news_data=news_data,
-                            insights=insights
+                            news_data=st.session_state.news_data,
+                            insights=st.session_state.financial_insight or st.session_state.news_insight
                         )
                         filename = "SK_Energy_Analysis_Report.xlsx"
                         mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
+                    
                     if file_bytes:
+                        # 세션에 파일 정보 저장
                         st.session_state.generated_file = file_bytes
                         st.session_state.generated_filename = filename
                         st.session_state.generated_mime = mime_type
-
+                        
                         st.download_button(
                             label="⬇️ 보고서 다운로드",
                             data=file_bytes,
@@ -2776,18 +2725,19 @@ def main():
                         st.success("✅ 보고서가 성공적으로 생성되었습니다!")
                     else:
                         st.error("❌ 보고서 생성에 실패했습니다.")
-
+        
         with col2:
             st.write("**📧 이메일 자동 발송**")
-
+            
+            # 이메일 주소 입력 UI
             email_method = st.radio(
                 "이메일 입력 방식",
                 ["🎯 도메인 선택", "✏️ 직접 입력"],
                 horizontal=True
             )
-
+            
             complete_email = None
-
+            
             if email_method == "🎯 도메인 선택":
                 col_id, col_domain = st.columns([1, 2])
                 with col_id:
@@ -2799,18 +2749,20 @@ def main():
                         "yahoo.com", "hotmail.com", "company.co.kr"
                     ]
                     selected_domain = st.selectbox("도메인 선택", domains)
-
+                
                 if email_id:
                     complete_email = f"{email_id}@{selected_domain}"
                     st.success(f"📧 발송할 이메일: **{complete_email}**")
             else:
                 complete_email = st.text_input("이메일 주소", placeholder="user@company.com", key="email_direct")
-
+            
+            # 이메일 발송 버튼
             if complete_email and st.button("📧 이메일로 발송", key="send_email"):
-                if st.session_state.get('generated_file'):
+                if hasattr(st.session_state, 'generated_file') and st.session_state.generated_file:
+                    # 실제 이메일 발송 대신 다운로드 링크 제공
                     st.success(f"✅ {complete_email}로 발송 준비 완료!")
-                    st.info("📧 실제 발송 기능은 비활성화되어 있습니다. 아래 다운로드 버튼을 사용해주세요.")
-
+                    st.info("📧 실제 발송 기능은 보안상 비활성화되어 있습니다. 아래 다운로드 버튼을 사용해주세요.")
+                    
                     st.download_button(
                         label=f"📥 {st.session_state.generated_filename} 다운로드",
                         data=st.session_state.generated_file,
@@ -2820,6 +2772,6 @@ def main():
                 else:
                     st.warning("먼저 보고서를 생성해주세요.")
 
-
+# 메인 실행
 if __name__ == "__main__":
-    main()
+    main()      
