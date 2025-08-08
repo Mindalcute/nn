@@ -1684,31 +1684,19 @@ SK에너지 관련 뉴스 분석:
 # 차트 생성 함수들
 # ==========================
 
-import streamlit as st
-# 기타 import
+source_df = create_dart_source_table(dart_collector, st.session_state.selected_companies, analysis_year=2025)
+st.write("source_df 타입:", type(source_df))
 
-# 1) create_dart_source_table 함수 정의 (파일 최상단 또는 main() 바로 위)
-def create_dart_source_table(dart_collector, selected_companies, analysis_year):
-    # 함수 내부 구현
-    pass
-
-# 2) main() 함수 정의
-def main():
-    # 예: 세션 상태 초기화
-    if 'selected_companies' not in st.session_state:
-        st.session_state.selected_companies = []
-
-    # dart_collector 생성 또는 초기화 (직접 코딩 필요)
-    dart_collector = ...
-
-    # 함수 호출
-    source_df = create_dart_source_table(dart_collector, st.session_state.selected_companies, analysis_year=2025)
-
-    # 이후 화면 처리, 시각화 등
-
-# 3) 실행 구문
-if __name__ == '__main__':
-    main()
+if source_df is not None and hasattr(source_df, 'empty'):
+    st.write("source_df 비어있나요?:", source_df.empty)
+    if not source_df.empty:
+        # 정상 처리
+        st.write("source_df 샘플:")
+        st.write(source_df.head())
+    else:
+        st.warning("source_df가 빈 DataFrame입니다.")
+else:
+    st.error("source_df가 None이거나 DataFrame이 아닙니다.")
     
 # ==========================
 # PDF 생성 함수 (쪽번호 추가 + 오류 수정)
