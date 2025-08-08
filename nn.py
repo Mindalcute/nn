@@ -96,6 +96,40 @@ except ImportError:
 
 st.set_page_config(page_title="SK에너지 경쟁사 분석 대시보드", page_icon="⚡", layout="wide")
 
+# 필수 클래스 최소 구현체 정의
+class FinancialDataProcessor:
+    def load_file(self, file):
+        # 실제 로직 없으면 임시 반환
+        return pd.DataFrame()
+
+    def merge_company_data(self, dfs):
+        return pd.concat(dfs, ignore_index=True)
+
+    def create_comparison_report(self, merged_df):
+        return "비교 분석 AI 리포트 내용"
+
+class SKNewsCollector:
+    def collect_news(self):
+        return pd.DataFrame()
+
+class GeminiInsightGenerator:
+    def generate_news_insight(self, keywords, titles):
+        return "뉴스 AI 인사이트 예시"
+
+# 메인 앱 UI 및 함수 정의
+def main():
+    tabs = st.tabs(["자동 데이터", "수동 업로드", "뉴스 분석", "보고서/메일"])
+    
+    # 탭2 예시 (수동 XBRL 업로드)
+    with tabs[1]:
+        processor = FinancialDataProcessor()
+        # ... UI 코드 및 로직
+    
+    # 탭3, 탭4 등
+    
+if __name__ == "__main__":
+    main()
+
 # ==========================
 # 설정 및 상수
 # ==========================
