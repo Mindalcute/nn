@@ -2713,25 +2713,23 @@ def main():
     # ==========================
     # 탭4: 보고서 생성 및 이메일 발송 (개선된 UI + PDF 쪽번호)
     # ==========================
-    
-with tabs[3]:
+    with tabs[3]:
     st.subheader("📄 통합 보고서 생성 & 이메일 발송")
-    
-    # 2열 레이아웃 생성
-    col1, col2 = st.columns([1, 1])
-    
-    # 왼쪽 열: 보고서 생성 및 다운로드
+
+    # 2열 레이아웃: 보고서 생성 + 메일 서비스 바로가기
+    col1, col2 = st.columns(2)
+
     with col1:
         st.write("**📥 보고서 다운로드**")
         report_format = st.radio("파일 형식 선택", ["PDF", "Excel"], horizontal=True)
-        
-        if st.button("📥 보고서 생성", type="primary", key="make_report"):
+
+        if st.button("📥 보고서 생성", key="make_report"):
             financial_data_for_report = None
             if st.session_state.get('financial_data') is not None and not st.session_state.financial_data.empty:
                 financial_data_for_report = st.session_state.financial_data
             elif st.session_state.get('manual_financial_data') is not None and not st.session_state.manual_financial_data.empty:
                 financial_data_for_report = st.session_state.manual_financial_data
-            
+
             with st.spinner("📄 보고서 생성 중..."):
                 if report_format == "PDF":
                     file_bytes = create_enhanced_pdf_report(
@@ -2749,26 +2747,24 @@ with tabs[3]:
                     )
                     filename = "SK_Energy_Analysis_Report.xlsx"
                     mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                
+
                 if file_bytes:
                     st.session_state.generated_file = file_bytes
                     st.session_state.generated_filename = filename
                     st.session_state.generated_mime = mime_type
-                    
+
                     st.download_button(
                         label="⬇️ 보고서 다운로드",
                         data=file_bytes,
                         file_name=filename,
-                        mime=mime_type
+                        mime=mime_type,
                     )
                     st.success("✅ 보고서가 성공적으로 생성되었습니다!")
                 else:
                     st.error("❌ 보고서 생성에 실패했습니다.")
-    
-    # 오른쪽 열: 메일 서비스 바로가기 및 다운로드 버튼
+
     with col2:
         st.write("**📧 메일 서비스 바로가기**")
-        
         mail_providers = {
             "네이버": "https://mail.naver.com/",
             "구글(Gmail)": "https://mail.google.com/",
@@ -2776,22 +2772,22 @@ with tabs[3]:
             "네이트": "https://mail.nate.com/",
             "야후": "https://mail.yahoo.com/"
         }
-        
         selected_provider = st.selectbox("메일 서비스 선택", list(mail_providers.keys()))
         url = mail_providers[selected_provider]
-        
+
         st.markdown(f"[{selected_provider} 메일 바로가기]({url})", unsafe_allow_html=True)
         st.info("선택한 메일 서비스 링크가 새 탭에서 열립니다.")
-        
+
         if st.session_state.get('generated_file'):
             st.download_button(
                 label=f"📥 {st.session_state.generated_filename} 다운로드",
                 data=st.session_state.generated_file,
                 file_name=st.session_state.generated_filename,
-                mime=st.session_state.generated_mime
+                mime=st.session_state.generated_mime,
             )
         else:
             st.info("먼저 보고서를 생성해주세요.")
+
 
 # 메인 실행
 if __name__ == "__main__":
