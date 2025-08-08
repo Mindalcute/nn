@@ -2673,7 +2673,7 @@ def main():
     # 탭4: 보고서 생성 및 이메일 발송 (개선된 UI + PDF 쪽번호)
     # ==========================
 
-PDF 생성 함수 (한글 폰트 임베딩)
+# PDF 생성 함수 (한글 폰트 임베딩)
 def create_enhanced_pdf_report(financial_data, news_data=None, insights=None):
     pdf = FPDF()
     pdf.add_page()
