@@ -1877,7 +1877,7 @@ def create_quarterly_trend_chart(quarterly_df):
     )
     
     return fig
-
+    
 # ==========================
 # PDF 생성 함수 (쪽번호 추가 + 오류 수정)
 # ==========================
