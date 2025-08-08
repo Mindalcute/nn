@@ -96,48 +96,13 @@ except ImportError:
 
 st.set_page_config(page_title="SK에너지 경쟁사 분석 대시보드", page_icon="⚡", layout="wide")
 
-# 필수 클래스 최소 구현체 정의
-class FinancialDataProcessor:
-    def load_file(self, file):
-        # 실제 로직 없으면 임시 반환
-        return pd.DataFrame()
-
-    def merge_company_data(self, dfs):
-        return pd.concat(dfs, ignore_index=True)
-
-    def create_comparison_report(self, merged_df):
-        return "비교 분석 AI 리포트 내용"
-
-class SKNewsCollector:
-    def collect_news(self):
-        return pd.DataFrame()
-
-class GeminiInsightGenerator:
-    def generate_news_insight(self, keywords, titles):
-        return "뉴스 AI 인사이트 예시"
-
-# 메인 앱 UI 및 함수 정의
-def main():
-    tabs = st.tabs(["자동 데이터", "수동 업로드", "뉴스 분석", "보고서/메일"])
-    
-    # 탭2 예시 (수동 XBRL 업로드)
-    with tabs[1]:
-        processor = FinancialDataProcessor()
-        # ... UI 코드 및 로직
-    
-    # 탭3, 탭4 등
-    
-if __name__ == "__main__":
-    main()
-
 # ==========================
 # 설정 및 상수
 # ==========================
 
-
 # API 키 설정
-DART_API_KEY = st.secrets.get("DART_API_KEY", "")
-GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+DART_API_KEY = "9a153f4344ad2db546d651090f78c8770bd773cb"
+GEMINI_API_KEY = "AIzaSyB176ys4MCjEs8R0dv15hMqDE2G-9J0qIA"
 
 # 구글시트 설정 (수정됨)
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/16g1G89xoxyqF32YLMD8wGYLnQzjq2F_ew6G1AHH4bCA/edit?usp=sharing"
@@ -563,24 +528,24 @@ class DartAPICollector:
 class FinancialDataProcessor:
     # 더 포괄적한 XBRL 태그 매핑 (정규식 패턴)
     INCOME_STATEMENT_PATTERNS = {
-        # XBRL 실제 태그명 매핑
-        r'(ifrs-full:Revenue|revenue|sales|매출|수익|총매출|매출수익|operating.*revenue)(?!.*cost|원가|비용)': '매출액',
-        r'(ifrs-full:CostOfSales|cost.*revenue|cost.*sales|cost.*goods|매출원가|원가|판매원가|제품매출원가)': '매출원가',
+        # 매출 관련 (더 광범위한 패턴)
+        r'(revenue|sales|매출|수익|총매출|매출수익|operating.*revenue)(?!.*cost|원가|비용)': '매출액',
+        r'(cost.*revenue|cost.*sales|cost.*goods|매출원가|원가|판매원가|제품매출원가)': '매출원가',
         
         # 이익 관련
-        r'(ifrs-full:GrossProfit|gross.*profit|총이익|매출총이익|총수익)': '매출총이익',
-        r'(dart:OperatingIncomeLoss|ifrs-full:OperatingIncomeLoss|operating.*income|operating.*profit|영업이익|영업손익|영업수익)(?!.*비용|expense)': '영업이익',
-        r'(ifrs-full:ProfitLoss|net.*income|net.*profit|당기순이익|순이익|당기.*순손익|net.*earnings)(?!.*loss)': '당기순이익',
+        r'(gross.*profit|총이익|매출총이익|총수익)': '매출총이익',
+        r'(operating.*income|operating.*profit|영업이익|영업손익|영업수익)(?!.*비용|expense)': '영업이익',
+        r'(net.*income|net.*profit|당기순이익|순이익|당기.*순손익|net.*earnings)(?!.*loss)': '당기순이익',
         
         # 비용 관련 (더 정확한 패턴)
-        r'(dart:TotalSellingGeneralAdministrativeExpenses|selling.*expense|selling.*cost|판매비|판매비용|판매관리비)': '판관비',
         r'(selling.*expense|selling.*cost|판매비|판매비용|판매관련비용)': '판매비',
         r'(administrative.*expense|administrative.*cost|관리비|관리비용|일반관리비)': '관리비',
+        r'(selling.*administrative|판매비.*관리비|판관비|판매.*관리.*비용)': '판관비',
         r'(employee.*benefit|employee.*cost|wage|salary|인건비|급여|임금)': '인건비',
         r'(depreciation|amortization|감가상각|상각비|감가상각비)': '감가상각비',
         
         # 기타 항목
-        r'(ifrs-full:FinanceCosts|interest.*expense|interest.*cost|이자비용|이자지급)': '이자비용',
+        r'(interest.*expense|interest.*cost|이자비용|이자지급)': '이자비용',
         r'(financial.*cost|금융비용|금융원가)': '금융비용',
         r'(non.*operating.*income|영업외수익|기타수익)': '영업외수익',
         r'(non.*operating.*expense|영업외비용|기타비용)': '영업외비용'
@@ -722,82 +687,56 @@ class FinancialDataProcessor:
         # 진행 상황 표시
         st.info(f"🔍 {len(numeric_tags)}개의 숫자 태그 발견, 분석 중...")
         
-        # 디버깅: 실제 추출된 데이터 로깅 (확장 가능한 형태로 변경)
-        with st.expander("🔍 XBRL 파일에서 추출된 원시 데이터 (클릭하여 확장)", expanded=False):
-            st.write("📊 주요 재무 데이터 원시값:")
+        # 각 태그 분석
+        for tag in numeric_tags:
+            tag_text = tag.string.strip()
             
-            # 각 태그 분석
-            for tag in numeric_tags:
-                tag_text = tag.string.strip()
-                
-                # 숫자 추출 및 검증
-                try:
-                    # 괄호로 둘러싸인 음수 처리
-                    if '(' in tag_text and ')' in tag_text:
-                        number_str = re.sub(r'[^\d.]', '', tag_text.replace('(', '').replace(')', ''))
-                        if number_str:
-                            value = -float(number_str)
-                        else:
-                            continue
+            # 숫자 추출 및 검증
+            try:
+                # 괄호로 둘러싸인 음수 처리
+                if '(' in tag_text and ')' in tag_text:
+                    number_str = re.sub(r'[^\d.]', '', tag_text.replace('(', '').replace(')', ''))
+                    if number_str:
+                        value = -float(number_str)
                     else:
-                        # 일반적인 숫자 추출
-                        number_str = re.sub(r'[^\d.-]', '', tag_text)
-                        if number_str and number_str not in ['-', '.', '-.']:
-                            value = float(number_str)
-                        else:
-                            continue
-                    
-                    # 주요 재무 항목 태그만 표시 (1억원 이상)
-                    if abs(value) >= 100_000_000:  # 1억원 이상
-                        # 주요 재무 항목 태그인지 확인
-                        tag_name = tag.name.lower() if tag.name else ''
-                        is_key_financial = any(keyword in tag_name for keyword in [
-                            'revenue', 'cost', 'profit', 'income', 'expense', 'loss',
-                            '매출', '원가', '이익', '수익', '비용', '손실'
-                        ])
-                        
-                        if is_key_financial:
-                            st.write(f"  💰 {value:,.0f}원 (태그: {tag.name})")
-                        else:
-                            st.write(f"  📊 {value:,.0f}원 (태그: {tag.name})")
-                    
-                    # XBRL 파일은 원 단위로 제공되므로 억원 단위로 변환
-                    original_value = value
-                    value = value / 100_000_000  # 원 → 억원 변환
-                    
-                    # 디버깅: 단위 변환 과정 로깅
-                    st.write(f"🔍 단위 변환: {original_value:,.0f}원 → {value:,.2f}억원")
-                    
-                    # 너무 작은 값은 제외 (노이즈 제거)
-                    if abs(value) < 0.01:  # 1백만원 미만 제외
-                        st.write(f"🔍 노이즈 제거: {value:,.2f}억원 (1백만원 미만)")
                         continue
-                        
-                except (ValueError, TypeError):
+                else:
+                    # 일반적인 숫자 추출
+                    number_str = re.sub(r'[^\d.-]', '', tag_text)
+                    if number_str and number_str not in ['-', '.', '-.']:
+                        value = float(number_str)
+                    else:
+                        continue
+                
+                # 너무 작은 값은 제외 (노이즈 제거)
+                if abs(value) < 1000:
                     continue
-                
-                # 태그 정보 구성 (태그명 + 속성)
-                tag_info_parts = [tag.name.lower() if tag.name else '']
-                if tag.attrs:
-                    tag_info_parts.extend([str(v).lower() for v in tag.attrs.values()])
-                tag_info = ' '.join(tag_info_parts)
-                
-                # 정규식 패턴 매칭
-                for pattern, standard_item in self.compiled_patterns.items():
-                    if pattern.search(tag_info):
-                        # 같은 항목이 이미 있으면 더 큰 절댓값으로 업데이트
-                        if standard_item not in items or abs(value) > abs(items[standard_item]):
-                            items[standard_item] = value
-                        processed_count += 1
-                        break
+                    
+            except (ValueError, TypeError):
+                continue
+            
+            # 태그 정보 구성 (태그명 + 속성)
+            tag_info_parts = [tag.name.lower() if tag.name else '']
+            if tag.attrs:
+                tag_info_parts.extend([str(v).lower() for v in tag.attrs.values()])
+            tag_info = ' '.join(tag_info_parts)
+            
+            # 정규식 패턴 매칭
+            for pattern, standard_item in self.compiled_patterns.items():
+                if pattern.search(tag_info):
+                    # 같은 항목이 이미 있으면 더 큰 절댓값으로 업데이트
+                    if standard_item not in items or abs(value) > abs(items[standard_item]):
+                        items[standard_item] = value
+                    processed_count += 1
+                    break
         
         # 결과 요약 표시
         if items:
             st.success(f"✅ {len(items)}개 재무항목 추출 (총 {processed_count}개 태그 처리)")
-            with st.expander("🔍 추출된 데이터 상세 보기", expanded=False):
+            with st.expander("🔍 추출된 데이터 상세 보기"):
                 for key, value in items.items():
                     formatted_value = self._format_amount(value)
-                    st.write(f"**{key}**: {formatted_value} (원시값: {value:,.2f}억원)")
+                    st.write(f"**{key}**: {formatted_value}")
         else:
             st.warning("⚠️ 표준 재무 항목을 찾을 수 없습니다.")
         
@@ -839,32 +778,31 @@ class FinancialDataProcessor:
         return pd.DataFrame(income_statement)
 
     def _calculate_derived_items(self, data):
-        """파생 항목 계산"""
+        """파생 항목 계산 (누락된 데이터 추정)"""
         calculated = {}
         
+        # 매출총이익 계산
         if '매출액' in data and '매출원가' in data:
             calculated['매출총이익'] = data['매출액'] - data['매출원가']
         elif '매출액' in data and '매출총이익' not in data:
+            # 매출총이익이 없으면 업계 평균 30%로 추정
             calculated['매출총이익'] = data['매출액'] * 0.3
             calculated['매출원가'] = data['매출액'] - calculated['매출총이익']
-            
+        elif '매출총이익' in data and '매출액' not in data and '매출원가' in data:
+            calculated['매출액'] = data['매출총이익'] + data['매출원가']
+        
+        # 판관비 계산
         if '판매비' in data and '관리비' in data:
             calculated['판관비'] = data['판매비'] + data['관리비']
-            
-        # 당기순이익 정확한 계산
-        if '영업이익' in data and '영업외수익' in data and '영업외비용' in data:
-            calculated['당기순이익'] = data['영업이익'] + data['영업외수익'] - data['영업외비용']
-        elif '영업이익' in data:
-            calculated['당기순이익'] = data['영업이익']
-            
-        # 디버깅: 당기순이익 계산 로깅
-        if '당기순이익' in calculated:
-            st.write(f"🔍 당기순이익 계산:")
-            st.write(f"  영업이익: {data.get('영업이익', 0):,.0f}억원")
-            st.write(f"  영업외수익: {data.get('영업외수익', 0):,.0f}억원")
-            st.write(f"  영업외비용: {data.get('영업외비용', 0):,.0f}억원")
-            st.write(f"  계산결과: {calculated['당기순이익']:,.0f}억원")
-            
+        elif '판관비' in data and '판매비' not in data and '관리비' not in data:
+            # 판관비를 6:4 비율로 분할 (일반적 비율)
+            calculated['판매비'] = data['판관비'] * 0.6
+            calculated['관리비'] = data['판관비'] * 0.4
+        
+        # 영업이익 계산
+        if '매출총이익' in data and '판관비' in data and '영업이익' not in data:
+            calculated['영업이익'] = data['매출총이익'] - data['판관비']
+        
         return calculated
 
     def _calculate_ratios(self, data):
@@ -898,29 +836,21 @@ class FinancialDataProcessor:
         return ratios
 
     def _format_amount(self, amount):
-        """금액 포맷팅 (한국 단위 사용) - 억원 단위 기준"""
+        """금액 포맷팅 (한국 단위 사용)"""
         if amount == 0:
             return "0원"
             
         abs_amount = abs(amount)
         sign = "▼ " if amount < 0 else ""
         
-        # 디버깅: 입력값 로깅 (상세)
-        st.write(f"🔍 _format_amount 입력값: {amount:,.2f}억원 (절댓값: {abs_amount:,.2f})")
-        
-        # amount는 이미 억원 단위로 변환된 값
-        if abs_amount >= 1:  # 1억 이상
-            result = f"{sign}{amount:.0f}억원"
-            st.write(f"🔍 [단위] 억원 단위 변환 결과: {result} (억원 기준: {abs_amount:.0f})")
-            return result
-        elif abs_amount >= 0.01:  # 1백만 이상
-            result = f"{sign}{amount*100:.0f}백만원"
-            st.write(f"🔍 [단위] 백만원 단위 변환 결과: {result} (백만원 기준: {abs_amount*100:.0f})")
-            return result
+        if abs_amount >= 1_000_000_000_000:  # 1조 이상
+            return f"{sign}{amount/1_000_000_000_000:.1f}조원"
+        elif abs_amount >= 100_000_000:  # 1억 이상
+            return f"{sign}{amount/100_000_000:.0f}억원"
+        elif abs_amount >= 10_000:  # 1만 이상
+            return f"{sign}{amount/10_000:.0f}만원"
         else:
-            result = f"{sign}{amount*100_000_000:,.0f}원"
-            st.write(f"🔍 [단위] 원 단위 변환 결과: {result} (원 기준: {amount*100_000_000:,.0f})")
-            return result
+            return f"{sign}{amount:,.0f}원"
 
     def merge_company_data(self, dataframes):
         """여러 회사 데이터 병합 (안전한 병합)"""
@@ -1018,7 +948,7 @@ class FinancialDataProcessor:
         report_lines.append("📊 정확한 분석을 위해 원본 재무제표와 대조하여 확인하시기 바랍니다.")
         
         return "\n".join(report_lines)
-
+        
 
 # ==========================
 # 수동 XBRL 업로드용 재무데이터 프로세서 (개선된 버전)
@@ -1057,63 +987,28 @@ class SKFinancialDataProcessor:
         """DART API에서 받은 DataFrame을 표준 손익계산서로 변환"""
         try:
             if dart_df.empty:
-                st.warning(f"⚠️ {company_name}: DART에서 데이터를 가져오지 못했습니다.")
                 return None
-
-            # 디버깅: 원본 DART 데이터 로깅
-            st.write(f"🔍 {company_name} 원본 DART 데이터 ({len(dart_df)}개 항목):")
-            debug_df = dart_df[['account_nm', 'thstrm_amount']].head(10)
-            st.dataframe(debug_df, use_container_width=True)
-
-            financial_data = {}
-            processed_count = 0
             
+            financial_data = {}
             for _, row in dart_df.iterrows():
                 account_nm = row.get('account_nm', '')
                 thstrm_amount = row.get('thstrm_amount', '0')
                 
-                # 빈 값 건너뛰기
-                if not account_nm or not thstrm_amount:
-                    continue
-                        
                 try:
-                    # 마이너스 값 정확 처리
                     amount_str = str(thstrm_amount).replace(',', '')
                     if '(' in amount_str and ')' in amount_str:
-                        # 괄호로 표시된 마이너스
                         amount_str = '-' + amount_str.replace('(', '').replace(')', '')
                     value = float(amount_str) if amount_str != '-' else 0
-                    
-                    # DART API는 천원 단위로 제공하므로 억원 단위로 변환
-                    value = value / 100_000  # 천원 → 억원 변환
-                    
-                except (ValueError, TypeError):
+                except:
                     continue
-
-                # 계정과목 매핑
-                mapped = False
+                
                 for key, mapped_name in self.INCOME_STATEMENT_MAP.items():
                     if key in account_nm or account_nm in key:
-                        if mapped_name not in financial_data or abs(value) > abs(financial_data[mapped_name]):
+                        if mapped_name not in financial_data or abs(value) >= abs(financial_data[mapped_name]):
                             financial_data[mapped_name] = value
-                            mapped = True
                         break
-                
-                if mapped:
-                    processed_count += 1
-
-            # 디버깅: 매핑된 재무 데이터 로깅
-            st.write(f"📊 {company_name} 매핑된 재무 데이터 ({processed_count}개 처리):")
-            for key, value in financial_data.items():
-                st.write(f"  {key}: {value:,.0f}억원")
-
-            # 데이터 검증
-            if not financial_data:
-                st.error(f"❌ {company_name}: 매핑된 재무 데이터가 없습니다.")
-                return None
-
-            return self._create_income_statement(financial_data, company_name)
             
+            return self._create_income_statement(financial_data, company_name)
         except Exception as e:
             st.error(f"DART 데이터 처리 오류: {e}")
             return None
@@ -1172,100 +1067,46 @@ class SKFinancialDataProcessor:
         if '판매비' in data and '관리비' in data:
             calculated['판관비'] = data['판매비'] + data['관리비']
         
-        # 당기순이익 정확한 계산
-        if '영업이익' in data and '영업외수익' in data and '영업외비용' in data:
-            calculated['당기순이익'] = data['영업이익'] + data['영업외수익'] - data['영업외비용']
-        elif '영업이익' in data:
-            calculated['당기순이익'] = data['영업이익']
-            
-        # 디버깅: 당기순이익 계산 로깅
-        if '당기순이익' in calculated:
-            st.write(f"🔍 당기순이익 계산:")
-            st.write(f"  영업이익: {data.get('영업이익', 0):,.0f}억원")
-            st.write(f"  영업외수익: {data.get('영업외수익', 0):,.0f}억원")
-            st.write(f"  영업외비용: {data.get('영업외비용', 0):,.0f}억원")
-            st.write(f"  계산결과: {calculated['당기순이익']:,.0f}억원")
-            
         return calculated
 
     def _calculate_enhanced_ratios(self, data):
-        """정규화 지표 계산"""
         ratios = {}
         매출액 = data.get('매출액', 0)
         
         if 매출액 > 0:
-            # 영업이익률
-            if '영업이익' in data and data['영업이익'] is not None:
+            if '영업이익' in data:
                 ratios['영업이익률(%)'] = round((data['영업이익'] / 매출액) * 100, 2)
-            
-            # 순이익률
-            if '당기순이익' in data and data['당기순이익'] is not None:
+            if '당기순이익' in data:
                 ratios['순이익률(%)'] = round((data['당기순이익'] / 매출액) * 100, 2)
-            
-            # 매출원가율
-            if '매출원가' in data and data['매출원가'] is not None:
+            if '매출원가' in data:
                 ratios['매출원가율(%)'] = round((data['매출원가'] / 매출액) * 100, 2)
-            
-            # 판관비율
-            if '판관비' in data and data['판관비'] is not None:
+            if '판관비' in data:
                 ratios['판관비율(%)'] = round((data['판관비'] / 매출액) * 100, 2)
+            if '영업이익' in data:
+                ratios['매출 1조원당 영업이익(억원)'] = round((data['영업이익'] / 100_000_000) / (매출액 / 1_000_000_000_000), 2)
             
-            # 매출 1조원당 영업이익
-            if '영업이익' in data and data['영업이익'] is not None:
-                try:
-                    ratios['매출 1조원당 영업이익(억원)'] = round((data['영업이익'] / 100_000_000) / (매출액 / 1_000_000_000_000), 2)
-                except ZeroDivisionError:
-                    ratios['매출 1조원당 영업이익(억원)'] = 0
-                
-            # 원가효율성지수
-            if '매출원가율(%)' in ratios:
-                ratios['원가효율성지수(점)'] = round(100 - ratios['매출원가율(%)'], 2)
-            
-            # 종합수익성점수
+            ratios['원가효율성지수(점)'] = round(100 - ratios.get('매출원가율(%)', 0), 2)
             operating_margin = ratios.get('영업이익률(%)', 0)
             net_margin = ratios.get('순이익률(%)', 0)
             ratios['종합수익성점수(점)'] = round((operating_margin * 2 + net_margin) / 3, 2)
             
-            # 업계 평균 대비 (수정된 계산)
             industry_avg_margin = 3.5
             if operating_margin > 0:
                 ratios['업계대비성과(%)'] = round((operating_margin / industry_avg_margin) * 100, 2)
-            else:
-                ratios['업계대비성과(%)'] = 0
-                
-            # 디버깅: 업계대비성과 계산 로깅
-            st.write(f"🔍 업계대비성과 계산:")
-            st.write(f"  영업이익률: {operating_margin:.2f}%")
-            st.write(f"  업계평균: {industry_avg_margin}%")
-            st.write(f"  계산결과: {ratios['업계대비성과(%)']:.2f}%")
-                
+        
         return ratios
 
     def _format_amount_with_loss_indicator(self, amount):
-        """영업손실/당기순손실 명확 표시 함수"""
-        # 디버깅: 입력값 크기 확인
-        st.write(f"🔍 _format_amount_with_loss_indicator 입력값: {amount:,.0f}억원")
-        
         if amount < 0:
             abs_amount = abs(amount)
-            st.write(f"🔍 절댓값: {abs_amount:,.0f}억원")
-            
             if abs_amount >= 1_000_000_000_000:
-                result = f"▼ {abs_amount/1_000_000_000_000:.1f}조원 손실"
-                st.write(f"🔍 조원 단위 변환 결과: {result}")
-                return result
+                return f"▼ {abs_amount/1_000_000_000_000:.1f}조원 영업손실"
             elif abs_amount >= 100_000_000:
-                result = f"▼ {abs_amount/100_000_000:.0f}억원 손실"
-                st.write(f"🔍 억원 단위 변환 결과: {result}")
-                return result
+                return f"▼ {abs_amount/100_000_000:.0f}억원 영업손실"
             elif abs_amount >= 10_000:
-                result = f"▼ {abs_amount/10_000:.0f}만원 손실"
-                st.write(f"🔍 만원 단위 변환 결과: {result}")
-                return result
+                return f"▼ {abs_amount/10_000:.0f}만원 영업손실"
             else:
-                result = f"▼ {abs_amount:,.0f}원 손실"
-                st.write(f"🔍 원 단위 결과: {result}")
-                return result
+                return f"▼ {abs_amount:,.0f}원 영업손실"
         else:
             return self._format_amount_profit(amount)
 
@@ -1657,7 +1498,7 @@ class GeminiInsightGenerator:
 
 분석은 전문 컨설턴트 수준으로 해주시되, 실무자가 바로 보고 실행방안을 만들 수 있을 정도로 구체적이고 현실적인 조언을 포함해주세요.
 """
-            
+
             response = self.model.generate_content(prompt)
             return response.text
         
@@ -1912,6 +1753,36 @@ def create_quarterly_trend_chart(quarterly_df):
     
     return fig
     
+# ==========================
+# DART 출처 테이블 생성 함수 (링크 개선)
+# ==========================
+
+def create_dart_source_table(dart_collector, collected_companies, analysis_year):
+    """DART 출처 정보 테이블 생성 (클릭 가능한 링크)"""
+    if not hasattr(dart_collector, 'source_tracking') or not dart_collector.source_tracking:
+        return pd.DataFrame()
+    
+    source_data = []
+    for company, info in dart_collector.source_tracking.items():
+        if company in collected_companies:
+            # 유효한 DART 링크 생성
+            rcept_no = info.get('rcept_no', 'N/A')
+            if rcept_no and rcept_no != 'N/A':
+                dart_url = f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcept_no}"
+            else:
+                dart_url = "https://dart.fss.or.kr"
+            
+            source_data.append({
+                '회사명': company,
+                '보고서 유형': info.get('report_type', '재무제표'),
+                '연도': info.get('year', analysis_year),
+                '회사코드': info.get('company_code', 'N/A'),
+                'DART 바로가기': dart_url,
+                '접수번호': rcept_no
+            })
+    
+    return pd.DataFrame(source_data)
+
 # ==========================
 # PDF 생성 함수 (쪽번호 추가 + 오류 수정)
 # ==========================
@@ -2372,6 +2243,81 @@ def create_excel_report(financial_data=None, news_data=None, insights=None):
         return None
 
 # ==========================
+# 이메일 발송 함수들
+# ==========================
+
+def create_email_ui():
+    """이메일 주소 입력 UI"""
+    email_method = st.radio(
+        "이메일 입력 방식",
+        ["🎯 도메인 선택", "✏️ 직접 입력"],
+        horizontal=True
+    )
+    
+    if email_method == "🎯 도메인 선택":
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            email_id = st.text_input("이메일 아이디", placeholder="홍길동")
+        with col2:
+            domains = [
+                "naver.com", "gmail.com", "daum.net", "kakao.com",
+                "sk.com", "skenergy.com", "hanmail.net", "outlook.com",
+                "yahoo.com", "hotmail.com", "company.co.kr"
+            ]
+            selected_domain = st.selectbox("도메인 선택", domains)
+        
+        if email_id:
+            complete_email = f"{email_id}@{selected_domain}"
+            return complete_email
+        else:
+            return None
+    else:
+        return st.text_input("이메일 주소", placeholder="user@company.com")
+
+def send_email_with_attachment(email_address, file_bytes, filename):
+    """이메일로 파일 발송"""
+    try:
+        # Gmail SMTP 설정 (예시)
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587
+        sender_email = "your_email@gmail.com"  # 실제 이메일로 변경 필요
+        sender_password = "your_password"  # 실제 비밀번호로 변경 필요
+        
+        msg = EmailMessage()
+        msg['Subject'] = f'SK에너지 경쟁사 분석 보고서 - {filename}'
+        msg['From'] = sender_email
+        msg['To'] = email_address
+        
+        msg.set_content(f"""
+안녕하세요,
+
+SK에너지 경쟁사 분석 보고서를 첨부파일로 보내드립니다.
+
+생성일시: {datetime.now().strftime('%Y년 %m월 %d일 %H시 %M분')}
+파일명: {filename}
+
+감사합니다.
+        """)
+        
+        # 파일 첨부
+        if filename.endswith('.pdf'):
+            msg.add_attachment(file_bytes, maintype='application', subtype='pdf', filename=filename)
+        else:
+            msg.add_attachment(file_bytes, maintype='application', subtype='vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=filename)
+        
+        # 실제 이메일 발송은 보안상 비활성화
+        # with smtplib.SMTP(smtp_server, smtp_port) as server:
+        #     server.starttls()
+        #     server.login(sender_email, sender_password)
+        #     server.send_message(msg)
+        
+        st.success(f"✅ {email_address}로 보고서가 발송 준비되었습니다!")
+        st.info("📧 실제 발송 기능은 보안상 비활성화되어 있습니다. 파일을 다운로드해서 직접 전송해주세요.")
+        
+    except Exception as e:
+        st.error(f"이메일 발송 중 오류: {e}")
+
+# ==========================
 # 메인 함수
 # ==========================
 def main():
@@ -2380,7 +2326,7 @@ def main():
     st.markdown("**DART API + RSS 뉴스 + 구글시트 + Gemini AI 인사이트 통합**")
     
     # 요구사항 맞춤 탭 구성
-    tabs = st.tabs(["📈 재무분석 (DART 자동)", "📁 수동 XBRL 업로드", "📰 뉴스분석", "📄 통합 보고서 생성 & 이메일 발송"])
+    tabs = st.tabs(["📈 재무분석 (DART 자동)", "📁 수동 XBRL 업로드", "📰 뉴스분석", "📄 보고서 생성"])
     
     # ==========================
     # 탭1: 재무분석 (DART 자동화) + AI 인사이트 + 새로고침
@@ -2470,7 +2416,7 @@ def main():
                         }
                     )
                     st.caption("💡 금융감독원 전자공시시스템(https://dart.fss.or.kr)에서 제공하는 공식 재무제표 데이터입니다.")
-            
+
             # 시각화/차트
             st.subheader("📊 시각화/차트")
             
@@ -2584,7 +2530,8 @@ def main():
                 if len(dataframes) == 1:
                     st.write("**📋 단일 회사 손익계산서**")
                     st.dataframe(dataframes[0], use_container_width=True)
-                    st.session_state.manual_financial_data = dataframes[0]  # 단일 회사도 merged_df로 설정
+                    st.session_state.manual_financial_data = dataframes[0]
+                    merged_df = dataframes[0]  # 단일 회사도 merged_df로 설정
                 else:
                     # 다중 회사 비교
                     merged_df = processor.merge_company_data(dataframes)
@@ -2671,120 +2618,107 @@ def main():
     
     # ==========================
     # 탭4: 보고서 생성 및 이메일 발송 (개선된 UI + PDF 쪽번호)
-    # ==========================with tabs[3]:
-with tabs[3]:
-    st.subheader("📄 통합 보고서 생성 & 이메일 발송")
-
-    col1, col2 = st.columns([1, 1])
-
-    with col1:
-        st.write("**📥 보고서 다운로드**")
-        report_format = st.radio("파일 형식 선택", ["PDF", "Excel"], horizontal=True)
-
-        if st.button("📥 보고서 생성", key="make_report"):
-            financial_data_for_report = None
-            if st.session_state.get('financial_data') is not None and not st.session_state.financial_data.empty:
-                financial_data_for_report = st.session_state.financial_data
-            elif st.session_state.get('manual_financial_data') is not None and not st.session_state.manual_financial_data.empty:
-                financial_data_for_report = st.session_state.manual_financial_data
-
-            news_data = st.session_state.get('news_data', None)
-            insights = st.session_state.get('financial_insight') or st.session_state.get('news_insight')
-
-            with st.spinner("📄 보고서 생성 중..."):
-                if report_format == "PDF":
-                    file_bytes = create_enhanced_pdf_report(
-                        financial_data=financial_data_for_report,
-                        news_data=news_data,
-                        insights=insights
-                    )
-                    filename = "SK_Energy_Analysis_Report.pdf"  # 영문명 고정
-                    mime_type = "application/pdf"
-                else:
-                    file_bytes = create_excel_report(
-                        financial_data=financial_data_for_report,
-                        news_data=news_data,
-                        insights=insights
-                    )
-                    filename = "SK_Energy_Analysis_Report.xlsx"  # 영문명 고정
-                    mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-                if file_bytes:
-                    st.session_state.generated_file = file_bytes
-                    st.session_state.generated_filename = filename
-                    st.session_state.generated_mime = mime_type
-
-                    st.download_button(
-                        label="⬇️ 보고서 다운로드",
-                        data=file_bytes,
-                        file_name=filename,
-                        mime=mime_type
-                    )
-                    st.success("✅ 보고서가 성공적으로 생성되었습니다!")
-                else:
-                    st.error("❌ 보고서 생성에 실패했습니다.")
-
-    with col2:
-        st.write("**📧 이메일 자동 발송**")
-
-        email_method = st.radio(
-            "이메일 입력 방식",
-            ["🎯 도메인 선택", "✏️ 직접 입력"],
-            horizontal=True
-        )
-
-        complete_email = None
-
-        if email_method == "🎯 도메인 선택":
-            col_id, col_domain = st.columns([1, 2])
-            with col_id:
-                email_id = st.text_input("이메일 아이디", placeholder="홍길동", key="email_id")
-            with col_domain:
-                domains = [
-                    "naver.com", "gmail.com", "daum.net", "kakao.com",
-                    "sk.com", "skenergy.com", "hanmail.net", "outlook.com",
-                    "yahoo.com", "hotmail.com", "company.co.kr"
-                ]
-                selected_domain = st.selectbox("도메인 선택", domains)
-
-            if email_id:
-                complete_email = f"{email_id}@{selected_domain}"
-                st.success(f"📧 발송할 이메일: **{complete_email}**")
-        else:
-            complete_email = st.text_input("이메일 주소", placeholder="user@company.com", key="email_direct")
-
-        if complete_email and st.button("📧 이메일로 발송", key="send_email"):
-            if st.session_state.get('generated_file'):
-                st.success(f"✅ {complete_email}로 발송 준비 완료!")
-                st.info("📧 실제 발송 기능은 비활성화되어 있습니다. 아래에서 메일 서비스로 이동 후 첨부파일을 직접 보내세요.")
-
-                mail_services = {
-                    "gmail.com": "https://mail.google.com/mail/u/0/#inbox?compose=new",
-                    "naver.com": "https://mail.naver.com/",
-                    "daum.net": "https://mail.daum.net/",
-                    "kakao.com": "https://mail.kakao.com/",
-                    "outlook.com": "https://outlook.live.com/mail/0/inbox",
-                    "yahoo.com": "https://mail.yahoo.com/",
-                    "hotmail.com": "https://outlook.live.com/mail/0/inbox",
-                }
-
-                domain = complete_email.split("@")[-1].lower()
-                mail_url = mail_services.get(domain, "https://mail.google.com/mail/u/0/#inbox?compose=new")
-
-                st.markdown(
-                    f"[📨 메일 서비스 바로가기]({mail_url}){{target='_blank'}}",
-                    unsafe_allow_html=True
-                )
-
-                st.download_button(
-                    label=f"📥 {st.session_state.generated_filename} 다운로드",
-                    data=st.session_state.generated_file,
-                    file_name=st.session_state.generated_filename,
-                    mime=st.session_state.generated_mime
-                )
+    # ==========================
+    
+    with tabs[3]:
+        st.subheader("📄 통합 보고서 생성 & 이메일 발송")
+        
+        # 2열 레이아웃: PDF 생성 + 이메일 입력
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.write("**📥 보고서 다운로드**")
+            # 보고서 형식 선택
+            report_format = st.radio("파일 형식 선택", ["PDF", "Excel"], horizontal=True)
+            
+            if st.button("📥 보고서 생성", type="primary", key="make_report"):
+                # 데이터 우선순위: DART 자동 > 수동 업로드
+                financial_data_for_report = None
+                if st.session_state.financial_data is not None and not st.session_state.financial_data.empty:
+                    financial_data_for_report = st.session_state.financial_data
+                elif st.session_state.manual_financial_data is not None and not st.session_state.manual_financial_data.empty:
+                    financial_data_for_report = st.session_state.manual_financial_data
+                
+                with st.spinner("📄 보고서 생성 중..."):
+                    if report_format == "PDF":
+                        file_bytes = create_enhanced_pdf_report(
+                            financial_data=financial_data_for_report,
+                            news_data=st.session_state.news_data,
+                            insights=st.session_state.financial_insight or st.session_state.news_insight
+                        )
+                        filename = "SK_Energy_Analysis_Report.pdf"
+                        mime_type = "application/pdf"
+                    else:
+                        file_bytes = create_excel_report(
+                            financial_data=financial_data_for_report,
+                            news_data=st.session_state.news_data,
+                            insights=st.session_state.financial_insight or st.session_state.news_insight
+                        )
+                        filename = "SK_Energy_Analysis_Report.xlsx"
+                        mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    
+                    if file_bytes:
+                        # 세션에 파일 정보 저장
+                        st.session_state.generated_file = file_bytes
+                        st.session_state.generated_filename = filename
+                        st.session_state.generated_mime = mime_type
+                        
+                        st.download_button(
+                            label="⬇️ 보고서 다운로드",
+                            data=file_bytes,
+                            file_name=filename,
+                            mime=mime_type
+                        )
+                        st.success("✅ 보고서가 성공적으로 생성되었습니다!")
+                    else:
+                        st.error("❌ 보고서 생성에 실패했습니다.")
+        
+        with col2:
+            st.write("**📧 이메일 자동 발송**")
+            
+            # 이메일 주소 입력 UI
+            email_method = st.radio(
+                "이메일 입력 방식",
+                ["🎯 도메인 선택", "✏️ 직접 입력"],
+                horizontal=True
+            )
+            
+            complete_email = None
+            
+            if email_method == "🎯 도메인 선택":
+                col_id, col_domain = st.columns([1, 2])
+                with col_id:
+                    email_id = st.text_input("이메일 아이디", placeholder="홍길동", key="email_id")
+                with col_domain:
+                    domains = [
+                        "naver.com", "gmail.com", "daum.net", "kakao.com",
+                        "sk.com", "skenergy.com", "hanmail.net", "outlook.com",
+                        "yahoo.com", "hotmail.com", "company.co.kr"
+                    ]
+                    selected_domain = st.selectbox("도메인 선택", domains)
+                
+                if email_id:
+                    complete_email = f"{email_id}@{selected_domain}"
+                    st.success(f"📧 발송할 이메일: **{complete_email}**")
             else:
-                st.warning("먼저 보고서를 생성해주세요.")
+                complete_email = st.text_input("이메일 주소", placeholder="user@company.com", key="email_direct")
+            
+            # 이메일 발송 버튼
+            if complete_email and st.button("📧 이메일로 발송", key="send_email"):
+                if hasattr(st.session_state, 'generated_file') and st.session_state.generated_file:
+                    # 실제 이메일 발송 대신 다운로드 링크 제공
+                    st.success(f"✅ {complete_email}로 발송 준비 완료!")
+                    st.info("📧 실제 발송 기능은 보안상 비활성화되어 있습니다. 아래 다운로드 버튼을 사용해주세요.")
+                    
+                    st.download_button(
+                        label=f"📥 {st.session_state.generated_filename} 다운로드",
+                        data=st.session_state.generated_file,
+                        file_name=st.session_state.generated_filename,
+                        mime=st.session_state.generated_mime
+                    )
+                else:
+                    st.warning("먼저 보고서를 생성해주세요.")
 
+# 메인 실행
 if __name__ == "__main__":
     main()
-
