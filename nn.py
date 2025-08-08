@@ -2672,53 +2672,30 @@ def main():
                         st.success("✅ 보고서가 성공적으로 생성되었습니다!")
                     else:
                         st.error("❌ 보고서 생성에 실패했습니다.")
-        
-        with col2:
-            st.write("**📧 이메일 자동 발송**")
-            
-            # 이메일 주소 입력 UI
-            email_method = st.radio(
-                "이메일 입력 방식",
-                ["🎯 도메인 선택", "✏️ 직접 입력"],
-                horizontal=True
-            )
-            
-            complete_email = None
-            
-            if email_method == "🎯 도메인 선택":
-                col_id, col_domain = st.columns([1, 2])
-                with col_id:
-                    email_id = st.text_input("이메일 아이디", placeholder="홍길동", key="email_id")
-                with col_domain:
-                    domains = [
-                        "naver.com", "gmail.com", "daum.net", "kakao.com",
-                        "sk.com", "skenergy.com", "hanmail.net", "outlook.com",
-                        "yahoo.com", "hotmail.com", "company.co.kr"
-                    ]
-                    selected_domain = st.selectbox("도메인 선택", domains)
-                
-                if email_id:
-                    complete_email = f"{email_id}@{selected_domain}"
-                    st.success(f"📧 발송할 이메일: **{complete_email}**")
-            else:
-                complete_email = st.text_input("이메일 주소", placeholder="user@company.com", key="email_direct")
-            
-            # 이메일 발송 버튼
-            if complete_email and st.button("📧 이메일로 발송", key="send_email"):
-                if hasattr(st.session_state, 'generated_file') and st.session_state.generated_file:
-                    # 실제 이메일 발송 대신 다운로드 링크 제공
-                    st.success(f"✅ {complete_email}로 발송 준비 완료!")
-                    st.info("📧 실제 발송 기능은 보안상 비활성화되어 있습니다. 아래 다운로드 버튼을 사용해주세요.")
-                    
-                    st.download_button(
-                        label=f"📥 {st.session_state.generated_filename} 다운로드",
-                        data=st.session_state.generated_file,
-                        file_name=st.session_state.generated_filename,
-                        mime=st.session_state.generated_mime
-                    )
-                else:
-                    st.warning("먼저 보고서를 생성해주세요.")
+                with col2:
+            st.write("**📧 메일 서비스 바로가기**")
+            mail_providers = {
+                "네이버": "https://mail.naver.com/",
+                "구글(Gmail)": "https://mail.google.com/",
+                "다음": "https://mail.daum.net/",
+                "네이트": "https://mail.nate.com/",
+                "야후": "https://mail.yahoo.com/"
+            }
+            selected_provider = st.selectbox("메일 서비스 선택", list(mail_providers.keys()))
+            url = mail_providers[selected_provider]
 
-# 메인 실행
+            st.markdown(f"[{selected_provider} 메일 바로가기]({url})", unsafe_allow_html=True)
+            st.info("선택한 메일 서비스 링크가 새 탭에서 열립니다.")
+
+            if st.session_state.get('generated_file'):
+                st.download_button(
+                    label=f"📥 {st.session_state.generated_filename} 다운로드",
+                    data=st.session_state.generated_file,
+                    file_name=st.session_state.generated_filename,
+                    mime=st.session_state.generated_mime,
+                )
+            else:
+                st.info("먼저 보고서를 생성해주세요.")
+
 if __name__ == "__main__":
     main()
