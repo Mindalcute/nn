@@ -1688,6 +1688,12 @@ def create_sk_bar_chart(chart_df):
     """SK에너지 강조 막대 차트"""
     if chart_df.empty or not PLOTLY_AVAILABLE:
         return None
+
+    # 디버깅 출력: 컬럼과 일부 데이터 확인
+    st.write("=== create_sk_bar_chart: chart_df columns ===")
+    st.write(chart_df.columns)
+    st.write("=== create_sk_bar_chart: chart_df head ===")
+    st.write(chart_df.head())
     
     # 파스텔 색상 매핑
     companies = chart_df['회사'].unique() if '회사' in chart_df.columns else []
@@ -1724,10 +1730,17 @@ def create_sk_bar_chart(chart_df):
     
     return fig
 
+
 def create_sk_radar_chart(chart_df):
     """SK에너지 중심 레이더 차트"""
     if chart_df.empty or not PLOTLY_AVAILABLE:
         return None
+
+    # 디버깅 출력
+    st.write("=== create_sk_radar_chart: chart_df columns ===")
+    st.write(chart_df.columns)
+    st.write("=== create_sk_radar_chart: chart_df head ===")
+    st.write(chart_df.head())
     
     companies = chart_df['회사'].unique() if '회사' in chart_df.columns else []
     metrics = chart_df['지표'].unique() if '지표' in chart_df.columns else []
@@ -1799,10 +1812,17 @@ def create_sk_radar_chart(chart_df):
     
     return fig
 
+
 def create_quarterly_trend_chart(quarterly_df):
     """분기별 추이 차트 생성"""
     if quarterly_df.empty or not PLOTLY_AVAILABLE:
         return None
+
+    # 디버깅 출력
+    st.write("=== create_quarterly_trend_chart: quarterly_df columns ===")
+    st.write(quarterly_df.columns)
+    st.write("=== create_quarterly_trend_chart: quarterly_df head ===")
+    st.write(quarterly_df.head())
     
     fig = go.Figure()
     companies = quarterly_df['회사'].unique()
