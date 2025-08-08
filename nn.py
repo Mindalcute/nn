@@ -2672,30 +2672,30 @@ def main():
                         st.success("✅ 보고서가 성공적으로 생성되었습니다!")
                     else:
                         st.error("❌ 보고서 생성에 실패했습니다.")
-                with col2:
-            st.write("**📧 메일 서비스 바로가기**")
-            mail_providers = {
-                "네이버": "https://mail.naver.com/",
-                "구글(Gmail)": "https://mail.google.com/",
-                "다음": "https://mail.daum.net/",
-                "네이트": "https://mail.nate.com/",
-                "야후": "https://mail.yahoo.com/"
-            }
-            selected_provider = st.selectbox("메일 서비스 선택", list(mail_providers.keys()))
-            url = mail_providers[selected_provider]
+with col2:
+    st.write("**📧 메일 서비스 바로가기**")
+    mail_providers = {
+        "네이버": "https://mail.naver.com/",
+        "구글(Gmail)": "https://mail.google.com/",
+        "다음": "https://mail.daum.net/",
+        "네이트": "https://mail.nate.com/",
+        "야후": "https://mail.yahoo.com/"
+    }
+    selected_provider = st.selectbox("메일 서비스 선택", list(mail_providers.keys()))
+    url = mail_providers[selected_provider]
 
-            st.markdown(f"[{selected_provider} 메일 바로가기]({url})", unsafe_allow_html=True)
-            st.info("선택한 메일 서비스 링크가 새 탭에서 열립니다.")
+    st.markdown(f"[{selected_provider} 메일 바로가기]({url})", unsafe_allow_html=True)
+    st.info("선택한 메일 서비스 링크가 새 탭에서 열립니다.")
 
-            if st.session_state.get('generated_file'):
-                st.download_button(
-                    label=f"📥 {st.session_state.generated_filename} 다운로드",
-                    data=st.session_state.generated_file,
-                    file_name=st.session_state.generated_filename,
-                    mime=st.session_state.generated_mime,
-                )
-            else:
-                st.info("먼저 보고서를 생성해주세요.")
+    if st.session_state.get('generated_file'):
+        st.download_button(
+            label=f"📥 {st.session_state.generated_filename} 다운로드",
+            data=st.session_state.generated_file,
+            file_name=st.session_state.generated_filename,
+            mime=st.session_state.generated_mime,
+        )
+    else:
+        st.info("먼저 보고서를 생성해주세요.")
 
 if __name__ == "__main__":
     main()
