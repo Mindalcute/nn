@@ -15,6 +15,7 @@ import smtplib
 import ssl
 import streamlit as st
 from email.message import EmailMessage
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 
 
 
