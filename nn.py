@@ -2212,7 +2212,7 @@ def create_enhanced_pdf_report(
     except Exception as e:
         st.error(f"PDF 생성 오류: {e}")
         return None
-
+        
 def create_excel_report(financial_data=None, news_data=None, insights=None):
     """Excel 보고서 생성"""
     try:
@@ -2244,6 +2244,81 @@ def create_excel_report(financial_data=None, news_data=None, insights=None):
         return None
 
 # ==========================
+# 이메일 발송 함수들
+# ==========================
+
+def create_email_ui():
+    """이메일 주소 입력 UI"""
+    email_method = st.radio(
+        "이메일 입력 방식",
+        ["🎯 도메인 선택", "✏️ 직접 입력"],
+        horizontal=True
+    )
+    
+    if email_method == "🎯 도메인 선택":
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            email_id = st.text_input("이메일 아이디", placeholder="홍길동")
+        with col2:
+            domains = [
+                "naver.com", "gmail.com", "daum.net", "kakao.com",
+                "sk.com", "skenergy.com", "hanmail.net", "outlook.com",
+                "yahoo.com", "hotmail.com", "company.co.kr"
+            ]
+            selected_domain = st.selectbox("도메인 선택", domains)
+        
+        if email_id:
+            complete_email = f"{email_id}@{selected_domain}"
+            return complete_email
+        else:
+            return None
+    else:
+        return st.text_input("이메일 주소", placeholder="user@company.com")
+
+def send_email_with_attachment(email_address, file_bytes, filename):
+    """이메일로 파일 발송"""
+    try:
+        # Gmail SMTP 설정 (예시)
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587
+        sender_email = "your_email@gmail.com"  # 실제 이메일로 변경 필요
+        sender_password = "your_password"  # 실제 비밀번호로 변경 필요
+        
+        msg = EmailMessage()
+        msg['Subject'] = f'SK에너지 경쟁사 분석 보고서 - {filename}'
+        msg['From'] = sender_email
+        msg['To'] = email_address
+        
+        msg.set_content(f"""
+안녕하세요,
+
+SK에너지 경쟁사 분석 보고서를 첨부파일로 보내드립니다.
+
+생성일시: {datetime.now().strftime('%Y년 %m월 %d일 %H시 %M분')}
+파일명: {filename}
+
+감사합니다.
+        """)
+        
+        # 파일 첨부
+        if filename.endswith('.pdf'):
+            msg.add_attachment(file_bytes, maintype='application', subtype='pdf', filename=filename)
+        else:
+            msg.add_attachment(file_bytes, maintype='application', subtype='vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=filename)
+        
+        # 실제 이메일 발송은 보안상 비활성화
+        # with smtplib.SMTP(smtp_server, smtp_port) as server:
+        #     server.starttls()
+        #     server.login(sender_email, sender_password)
+        #     server.send_message(msg)
+        
+        st.success(f"✅ {email_address}로 보고서가 발송 준비되었습니다!")
+        st.info("📧 실제 발송 기능은 보안상 비활성화되어 있습니다. 파일을 다운로드해서 직접 전송해주세요.")
+        
+    except Exception as e:
+        st.error(f"이메일 발송 중 오류: {e}")
+
+# ==========================
 # 메인 함수
 # ==========================
 def main():
@@ -2252,7 +2327,7 @@ def main():
     st.markdown("**DART API + RSS 뉴스 + 구글시트 + Gemini AI 인사이트 통합**")
     
     # 요구사항 맞춤 탭 구성
-    tabs = st.tabs(["📈 재무분석 (DART 자동)", "📁 수동 XBRL 업로드", "📰 뉴스분석", "📄 통합 보고서 생성 & 이메일 서비스 바로가기"])
+    tabs = st.tabs(["📈 재무분석 (DART 자동)", "📁 수동 XBRL 업로드", "📰 뉴스분석", "📄 보고서 생성"])
     
     # ==========================
     # 탭1: 재무분석 (DART 자동화) + AI 인사이트 + 새로고침
@@ -2342,7 +2417,7 @@ def main():
                         }
                     )
                     st.caption("💡 금융감독원 전자공시시스템(https://dart.fss.or.kr)에서 제공하는 공식 재무제표 데이터입니다.")
-
+            
             # 시각화/차트
             st.subheader("📊 시각화/차트")
             
@@ -2406,142 +2481,6 @@ def main():
                 st.subheader("🤖 AI 재무 인사이트")
                 st.markdown(st.session_state.financial_insight)
     
-    # ==========================
-    # 탭2: 수동 XBRL 업로드
-    # ==========================
-    
-# ==========================
-# 탭2: 수동 XBRL 업로드 (오류 수정)
-# ==========================
-
-    with tabs[1]:
-        st.subheader("📁 수동 XBRL/XML 파일 업로드")
-        st.write("**XBRL/XML 파일을 직접 업로드하여 재무제표를 분석합니다.**")
-        
-        processor = FinancialDataProcessor()
-        
-        # 다중 파일 업로드
-        uploaded_files = st.file_uploader(
-            "XBRL/XML 파일들을 업로드하세요 (여러 개 선택 가능)",
-            type=['xbrl', 'xml'],
-            accept_multiple_files=True,
-            key="manual_upload"
-        )
-        
-        if uploaded_files:
-            st.subheader("📊 업로드된 파일 처리")
-            dataframes = []
-            
-            for uploaded_file in uploaded_files:
-                st.write(f"🔄 처리 중: {uploaded_file.name}")
-                df = processor.load_file(uploaded_file)
-                
-                if df is not None:
-                    dataframes.append(df)
-                    st.success(f"✅ {uploaded_file.name} 처리 완료")
-                    
-                    # 개별 회사 데이터 미리보기
-                    with st.expander(f"📋 {uploaded_file.name} 상세 데이터"):
-                        st.dataframe(df, use_container_width=True)
-                else:
-                    st.error(f"❌ {uploaded_file.name} 처리 실패")
-            
-            if dataframes:
-                # 경쟁사 비교 분석
-                st.subheader("🏢 경쟁사 비교 분석")
-                
-                # merged_df 초기화 (오류 수정)
-                merged_df = None
-                
-                if len(dataframes) == 1:
-                    st.write("**📋 단일 회사 손익계산서**")
-                    st.dataframe(dataframes[0], use_container_width=True)
-                    st.session_state.manual_financial_data = dataframes[0]
-                    merged_df = dataframes[0]  # 단일 회사도 merged_df로 설정
-                else:
-                    # 다중 회사 비교
-                    merged_df = processor.merge_company_data(dataframes)
-                    st.write("**📊 경쟁사 비교 손익계산서**")
-                    st.dataframe(merged_df, use_container_width=True)
-                    st.session_state.manual_financial_data = merged_df
-                
-                # AI 분석 리포트 (merged_df가 정의된 후에 실행)
-                if merged_df is not None and not merged_df.empty:
-                    st.subheader("💡 AI 분석 리포트")
-                    report = processor.create_comparison_report(merged_df)
-                    st.text(report)
-                else:
-                    st.error("❌ 비교 분석을 위한 데이터가 없습니다.")
-
-    # ==========================
-    # 탭3: 뉴스분석 (구글시트 + RSS 통합 + 새로고침)
-    # ==========================
-    
-    with tabs[2]:
-        st.subheader("📰 실시간 뉴스 분석")
-        st.write("**구글시트 자동화 뉴스 + 국내 주요 경제·산업 RSS를 수집해 SK에너지와 경쟁사 동향을 모니터링합니다.**")
-        
-        # 뉴스 수집 버튼
-        if st.button("🔄 통합 뉴스 수집/갱신", type="primary", key="collect_news"):
-            news_collector = SKNewsCollector()
-            news_df = news_collector.collect_news()
-
-            
-            if not news_df.empty:
-                st.session_state.news_data = news_df
-                
-                # Gemini AI 뉴스 인사이트 생성
-                gemini_generator = GeminiInsightGenerator()
-                with st.spinner("🤖 뉴스 AI 인사이트 생성 중..."):
-                    keywords_set = set()
-                    for kw_list in news_df["키워드"].dropna():
-                        keywords_set.update([kw.strip() for kw in str(kw_list).split(",")])
-                    
-                    news_insight = gemini_generator.generate_news_insight(
-                        list(keywords_set),
-                        news_df["제목"].tolist()
-                    )
-                    st.session_state.news_insight = news_insight
-                
-                st.success(f"✅ 총 {len(news_df)}개 뉴스 통합 수집 완료!")
-            else:
-                st.warning("관련 뉴스를 찾지 못했습니다.")
-        
-        # 수집된 뉴스 데이터 표시
-        if st.session_state.news_data is not None:
-            # 새로고침 버튼 추가
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.subheader("📋 수집된 뉴스 목록")
-            with col2:
-                if st.button("🔄 AI 인사이트 새로고침", key="refresh_news_insight"):
-                    gemini_generator = GeminiInsightGenerator()
-                    with st.spinner("🤖 뉴스 AI 인사이트 재생성 중..."):
-                        keywords_set = set()
-                        for kw_list in st.session_state.news_data["키워드"].dropna():
-                            keywords_set.update([kw.strip() for kw in str(kw_list).split(",")])
-                        
-                        news_insight = gemini_generator.generate_news_insight(
-                            list(keywords_set),
-                            st.session_state.news_data["제목"].tolist()
-                        )
-                        st.session_state.news_insight = news_insight
-                        st.rerun()
-            
-            st.dataframe(st.session_state.news_data, use_container_width=True)
-            
-            # 카테고리 분포 차트
-            #if PLOTLY_AVAILABLE:
-                #news_collector = SKNewsCollector()
-                #fig_news = news_collector.create_keyword_analysis(st.session_state.news_data)
-                #if fig_news:
-                  #  st.plotly_chart(fig_news, use_container_width=True)
-            
-            # Gemini AI 뉴스 인사이트
-            if st.session_state.news_insight:
-                st.subheader("🤖 AI 뉴스 인사이트")
-                st.markdown(st.session_state.news_insight)
-    
 # ==========================
 # 탭4: 보고서 생성 및 이메일 발송 (개선된 UI + PDF 쪽번호)
 # ==========================
@@ -2549,56 +2488,56 @@ def main():
     with tabs[3]:
         st.subheader("📄 통합 보고서 생성 & 이메일 서비스 바로가기")
 
+        # 2열 레이아웃: PDF 생성 + 이메일 입력
         col1, col2 = st.columns([1, 1])
 
         with col1:
             st.write("**📥 보고서 다운로드**")
-            report_format = st.radio("파일 형식 선택", ["PDF", "Excel"], horizontal=True, key="report_format_radio")
-
-            if st.button("📥 보고서 생성", key="make_report_btn"):
+            # 보고서 형식 선택
+            report_format = st.radio("파일 형식 선택", ["PDF", "Excel"], horizontal=True)
+            
+            if st.button("📥 보고서 생성", type="primary", key="make_report"):
+                # 데이터 우선순위: DART 자동 > 수동 업로드
                 financial_data_for_report = None
-                if st.session_state.get('financial_data') is not None and not st.session_state.financial_data.empty:
+                if st.session_state.financial_data is not None and not st.session_state.financial_data.empty:
                     financial_data_for_report = st.session_state.financial_data
-                elif st.session_state.get('manual_financial_data') is not None and not st.session_state.manual_financial_data.empty:
+                elif st.session_state.manual_financial_data is not None and not st.session_state.manual_financial_data.empty:
                     financial_data_for_report = st.session_state.manual_financial_data
-
-                news_data = st.session_state.get('news_data', None)
-                insights = st.session_state.get('financial_insight') or st.session_state.get('news_insight')
-
+                
                 with st.spinner("📄 보고서 생성 중..."):
                     if report_format == "PDF":
                         file_bytes = create_enhanced_pdf_report(
                             financial_data=financial_data_for_report,
-                            news_data=news_data,
-                            insights=insights
+                            news_data=st.session_state.news_data,
+                            insights=st.session_state.financial_insight or st.session_state.news_insight
                         )
                         filename = "SK_Energy_Analysis_Report.pdf"
                         mime_type = "application/pdf"
                     else:
                         file_bytes = create_excel_report(
                             financial_data=financial_data_for_report,
-                            news_data=news_data,
-                            insights=insights
+                            news_data=st.session_state.news_data,
+                            insights=st.session_state.financial_insight or st.session_state.news_insight
                         )
                         filename = "SK_Energy_Analysis_Report.xlsx"
                         mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
+                    
                     if file_bytes:
+                        # 세션에 파일 정보 저장
                         st.session_state.generated_file = file_bytes
                         st.session_state.generated_filename = filename
                         st.session_state.generated_mime = mime_type
-
+                        
                         st.download_button(
                             label="⬇️ 보고서 다운로드",
                             data=file_bytes,
                             file_name=filename,
-                            mime=mime_type,
-                            key="download_report_btn"
+                            mime=mime_type
                         )
                         st.success("✅ 보고서가 성공적으로 생성되었습니다!")
                     else:
                         st.error("❌ 보고서 생성에 실패했습니다.")
-
+                        
         with col2:
             st.write("**📧 이메일 서비스 바로가기**")
 
