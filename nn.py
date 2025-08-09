@@ -59,7 +59,8 @@ from bs4 import BeautifulSoup
 
 # PDF 생성용 라이브러리
 try:
-    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.
+lib.pagesizes import letter, A4
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image as RLImage, PageTemplate, Frame
@@ -1883,8 +1884,16 @@ def create_enhanced_pdf_report(
                     pass
                 break  # 첫 번째로 성공(또는 시도)한 경로 뒤에는 반복 종료
 
-    # ---------- 3. 스타일 ----------
+    # 일본어 폰트지만 한글 일부 지원 (완벽한 한글은 TTF 폰트 등록 필요)
+    pdfmetrics.registerFont(UnicodeCIDFont('HeiseiKakuGo-W5'))
+
+# ---------- 3. 스타일 ----------
     styles = getSampleStyleSheet()
+
+    # 기본 Normal 스타일에 한글 폰트 지정 (일본어 폰트지만 한글 지원)
+    style = styles["Normal"]
+    style.fontName = 'HeiseiKakuGo-W5'
+
     TITLE_STYLE = ParagraphStyle(
         'TITLE',
         fontName='KoreanBold' if 'KoreanBold' in pdfmetrics.getRegisteredFontNames() else 'Helvetica-Bold',
