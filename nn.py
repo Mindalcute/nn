@@ -59,8 +59,7 @@ from bs4 import BeautifulSoup
 
 # PDF 생성용 라이브러리
 try:
-    from reportlab.
-lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import letter, A4
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image as RLImage, PageTemplate, Frame
