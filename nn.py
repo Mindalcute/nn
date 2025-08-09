@@ -15,7 +15,6 @@ import smtplib
 import ssl
 import streamlit as st
 from email.message import EmailMessage
-from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 
 
 
@@ -1884,16 +1883,8 @@ def create_enhanced_pdf_report(
                     pass
                 break  # 첫 번째로 성공(또는 시도)한 경로 뒤에는 반복 종료
 
-    # 일본어 폰트지만 한글 일부 지원 (완벽한 한글은 TTF 폰트 등록 필요)
-    pdfmetrics.registerFont(UnicodeCIDFont('HeiseiKakuGo-W5'))
-
-# ---------- 3. 스타일 ----------
+    # ---------- 3. 스타일 ----------
     styles = getSampleStyleSheet()
-
-    # 기본 Normal 스타일에 한글 폰트 지정 (일본어 폰트지만 한글 지원)
-    style = styles["Normal"]
-    style.fontName = 'HeiseiKakuGo-W5'
-
     TITLE_STYLE = ParagraphStyle(
         'TITLE',
         fontName='KoreanBold' if 'KoreanBold' in pdfmetrics.getRegisteredFontNames() else 'Helvetica-Bold',
