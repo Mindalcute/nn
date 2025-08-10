@@ -15,6 +15,15 @@ import smtplib
 import ssl
 import streamlit as st
 from email.message import EmailMessage
+import pandas as pd  # pandas는 데이터 처리용으로 꼭 필요
+
+# reportlab 모듈들 (PDF 생성용)
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as RLImage
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 
 
@@ -1925,40 +1934,32 @@ def create_enhanced_pdf_report(
         return tbl
     # ---------- 2. 폰트 등록 ----------
 # 3-1. 사용할 글꼴 경로(윈도·mac·리눅스) ― 필요한 것만 남겨도 무방
-# ---------- 2. 폰트 등록 ----------
-    # 운영체제별 폰트 경로 (.ttf 위주로 수정)
+def register_fonts():
+    # ---------- 2. 폰트 등록 ----------
     font_paths = {
         "Korean": [
             "C:/Windows/Fonts/malgun.ttf",
-            "/System/Library/Fonts/Supplemental/AppleSDGothicNeo-Regular.ttf",
+            "/System/Library/Fonts/AppleSDGothicNeo.ttc",
             "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"
         ],
         "KoreanBold": [
             "C:/Windows/Fonts/malgunbd.ttf",
-            "/System/Library/Fonts/Supplemental/AppleSDGothicNeo-Bold.ttf",
-            "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf"
+            "/System/Library/Fonts/AppleSDGothicNeo.ttc"
         ],
         "KoreanSerif": [
-            "C:/Windows/Fonts/batang.ttf",
-            "/System/Library/Fonts/Supplemental/AppleMyungjo.ttf",
+            "C:/Windows/Fonts/batang.ttc",
             "/usr/share/fonts/truetype/nanum/NanumMyeongjo.ttf"
         ]
     }
 
-    # 폰트 등록 시도 + 로그 출력
-    for name, paths in font_paths.items():
-        registered = False
-        for p in paths:
-            if os.path.exists(p):
+for font_name, paths in font_paths.items():
+        for path in paths:
+            if os.path.exists(path):
                 try:
-                    pdfmetrics.registerFont(TTFont(name, p))
-                    print(f"폰트 등록 성공: {name} → {p}")
-                    registered = True
-                    break  # 첫 번째 성공 경로에서 종료
-                except Exception as e:
-                    print(f"폰트 등록 실패: {name} → {p} (이유: {e})")
-        if not registered:
-            print(f"[경고] 폰트 등록 실패: {name} (모든 경로 시도 실패)")
+                    pdfmetrics.registerFont(TTFont(font_name, path))
+                    break  # 성공적으로 등록되면 다음 폰트로
+                except Exception:
+                    pass  # 등록 실패해도 무시하고 다음 경로 시도
 
     # ---------- 3. 스타일 ----------
     styles = getSampleStyleSheet()
@@ -2295,15 +2296,18 @@ def create_excel_report(financial_data=None, news_data=None, insights=None):
     try:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            sheet_created = False
+
             # 재무분석 시트
             if financial_data is not None and not financial_data.empty:
-                # '_원시값' 컬럼 제거
                 clean_financial = financial_data[[col for col in financial_data.columns if not col.endswith('_원시값')]]
                 clean_financial.to_excel(writer, sheet_name='재무분석', index=False)
+                sheet_created = True
             
             # 뉴스분석 시트
             if news_data is not None and not news_data.empty:
                 news_data.to_excel(writer, sheet_name='뉴스분석', index=False)
+                sheet_created = True
             
             # 인사이트 시트
             if insights:
@@ -2312,6 +2316,11 @@ def create_excel_report(financial_data=None, news_data=None, insights=None):
                     '내용': [str(insights)]
                 })
                 insight_df.to_excel(writer, sheet_name='AI인사이트', index=False)
+                sheet_created = True
+
+            # 모든 시트가 없을 경우 기본 시트 생성
+            if not sheet_created:
+                pd.DataFrame({"메시지": ["데이터가 없습니다."]}).to_excel(writer, sheet_name='빈 보고서', index=False)
         
         output.seek(0)
         return output.getvalue()
