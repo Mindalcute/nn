@@ -126,20 +126,6 @@ class GeminiInsightGenerator:
     def generate_news_insight(self, keywords, titles):
         return "뉴스 AI 인사이트 예시"
 
-# 메인 앱 UI 및 함수 정의
-def main():
-    tabs = st.tabs(["자동 데이터", "수동 업로드", "뉴스 분석", "보고서/메일"])
-    
-    # 탭2 예시 (수동 XBRL 업로드)
-    with tabs[1]:
-        processor = FinancialDataProcessor()
-        # ... UI 코드 및 로직
-    
-    # 탭3, 탭4 등
-    
-if __name__ == "__main__":
-    main()
-
 # ==========================
 # 설정 및 상수
 # ==========================
