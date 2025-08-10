@@ -1952,7 +1952,7 @@ def register_fonts():
         ]
     }
 
-for font_name, paths in font_paths.items():
+    for font_name, paths in font_paths.items():
         for path in paths:
             if os.path.exists(path):
                 try:
@@ -1960,7 +1960,6 @@ for font_name, paths in font_paths.items():
                     break  # 성공적으로 등록되면 다음 폰트로
                 except Exception:
                     pass  # 등록 실패해도 무시하고 다음 경로 시도
-
     # ---------- 3. 스타일 ----------
     styles = getSampleStyleSheet()
     TITLE_STYLE = ParagraphStyle(
