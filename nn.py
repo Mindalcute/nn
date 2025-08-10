@@ -1926,31 +1926,39 @@ def create_enhanced_pdf_report(
     # ---------- 2. 폰트 등록 ----------
 # 3-1. 사용할 글꼴 경로(윈도·mac·리눅스) ― 필요한 것만 남겨도 무방
 # ---------- 2. 폰트 등록 ----------
+    # 운영체제별 폰트 경로 (.ttf 위주로 수정)
     font_paths = {
-        "Korean": [                                 # ← 추가
-            "C:/Windows/Fonts/malgun.ttf",          # 본문용 가변-폭
-            "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+        "Korean": [
+            "C:/Windows/Fonts/malgun.ttf",
+            "/System/Library/Fonts/Supplemental/AppleSDGothicNeo-Regular.ttf",
             "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"
         ],
         "KoreanBold": [
             "C:/Windows/Fonts/malgunbd.ttf",
-            "/System/Library/Fonts/AppleSDGothicNeo.ttc"
+            "/System/Library/Fonts/Supplemental/AppleSDGothicNeo-Bold.ttf",
+            "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf"
         ],
         "KoreanSerif": [
-            "C:/Windows/Fonts/batang.ttc",
+            "C:/Windows/Fonts/batang.ttf",
+            "/System/Library/Fonts/Supplemental/AppleMyungjo.ttf",
             "/usr/share/fonts/truetype/nanum/NanumMyeongjo.ttf"
         ]
     }
 
+    # 폰트 등록 시도 + 로그 출력
     for name, paths in font_paths.items():
+        registered = False
         for p in paths:
             if os.path.exists(p):
                 try:
                     pdfmetrics.registerFont(TTFont(name, p))
-                except Exception:
-                    # 이미 등록돼 있거나 다른 이유로 실패한 경우 무시
-                    pass
-                break  # 첫 번째로 성공(또는 시도)한 경로 뒤에는 반복 종료
+                    print(f"폰트 등록 성공: {name} → {p}")
+                    registered = True
+                    break  # 첫 번째 성공 경로에서 종료
+                except Exception as e:
+                    print(f"폰트 등록 실패: {name} → {p} (이유: {e})")
+        if not registered:
+            print(f"[경고] 폰트 등록 실패: {name} (모든 경로 시도 실패)")
 
     # ---------- 3. 스타일 ----------
     styles = getSampleStyleSheet()
