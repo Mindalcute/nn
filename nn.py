@@ -1665,40 +1665,58 @@ def create_sk_bar_chart(chart_df):
     return fig
 
 def create_sk_radar_chart(chart_df):
-    """SK에너지 중심 레이더 차트"""
+    """SK에너지 중심 레이더 차트 (지표별 Min-Max 정규화 적용)"""
     if chart_df.empty or not PLOTLY_AVAILABLE:
         return None
     
     companies = chart_df['회사'].unique() if '회사' in chart_df.columns else []
     metrics = chart_df['지표'].unique() if '지표' in chart_df.columns else []
     
+    # 지표별 최소, 최대값 계산
+    min_max = {}
+    for metric in metrics:
+        values = chart_df.loc[chart_df['지표'] == metric, '수치']
+        min_val = values.min()
+        max_val = values.max()
+        # 최소 최대값이 같으면 max_val = min_val + 1로 설정(0 나누기 방지)
+        if min_val == max_val:
+            max_val = min_val + 1
+        min_max[metric] = (min_val, max_val)
+    
     fig = go.Figure()
     
     for i, company in enumerate(companies):
         company_data = chart_df[chart_df['회사'] == company] if '회사' in chart_df.columns else chart_df
-        values = company_data['수치'].tolist() if '수치' in company_data.columns else []
+        normalized_values = []
+        for metric in metrics:
+            raw_value = company_data.loc[company_data['지표'] == metric, '수치'].values
+            if len(raw_value) == 0:
+                norm_value = 0
+            else:
+                val = raw_value[0]
+                min_val, max_val = min_max[metric]
+                norm_value = (val - min_val) / (max_val - min_val)
+            normalized_values.append(norm_value)
         
-        if values:
-            values.append(values[0])  # 닫힌 도형을 위해 첫 번째 값을 마지막에 추가
-            theta_labels = list(metrics) + [metrics[0]] if len(metrics) > 0 else ['지표1']
-        else:
-            continue
+        # 닫힌 도형을 위해 첫 값 반복
+        normalized_values.append(normalized_values[0])
+        theta_labels = list(metrics) + [metrics[0]] if len(metrics) > 0 else ['지표1']
         
-        # 파스텔 색상 적용
+        # 색상
         color = get_company_color(company, companies)
         
-        # SK에너지는 특별한 스타일
+        # SK에너지 스타일 강조
         if 'SK' in company:
             line_width = 5
             marker_size = 12
-            name_style = f"**{company}**"  # 굵게 표시
+            name_style = f"**{company}**"
         else:
             line_width = 3
             marker_size = 8
             name_style = company
         
         fig.add_trace(go.Scatterpolar(
-            r=values,
+            r=normalized_values,
             theta=theta_labels,
             fill='toself',
             name=name_style,
@@ -1706,23 +1724,21 @@ def create_sk_radar_chart(chart_df):
             marker=dict(size=marker_size, color=color)
         ))
     
-    max_value = chart_df['수치'].max() if '수치' in chart_df.columns and not chart_df.empty else 10
-    
     fig.update_layout(
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[0, max_value * 1.2],
+                range=[0, 1],  # 정규화 했으니 0~1 범위
                 tickmode='linear',
                 tick0=0,
-                dtick=max_value * 0.2,
+                dtick=0.2,
                 tickfont=dict(size=14)
             ),
             angularaxis=dict(
                 tickfont=dict(size=16)
             )
         ),
-        title="🎯 SK에너지 vs 경쟁사 수익성 지표 비교",
+        title="🎯 SK에너지 vs 경쟁사 수익성 지표 비교 (정규화)",
         height=600,
         showlegend=True,
         legend=dict(
