@@ -186,8 +186,8 @@ def get_company_color(company_name, all_companies):
             SK_COLORS['competitor_2'], # 파스텔 블루
             SK_COLORS['competitor_3'], # 파스텔 옐로우
             SK_COLORS['competitor_4'], # 파스텔 퍼플
-            SK_COLORS['competitor_5']  # 파스텔 오렌지
-            SK_COLORS['competitor_6']  # 파스텔 민트
+            SK_COLORS['competitor_5'], # 파스텔 오렌지
+            SK_COLORS['competitor_6'], # 파스텔 민트
         ]
         
         # SK가 아닌 회사들의 인덱스 계산
