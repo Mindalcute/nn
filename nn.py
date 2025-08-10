@@ -180,14 +180,13 @@ def get_company_color(company_name, all_companies):
     if 'SK' in company_name:
         return SK_COLORS['primary']
     else:
-        # 경쟁사들에게 서로 다른 파스텔 색상 할당
         competitor_colors = [
-            SK_COLORS['competitor_1'], # 파스텔 그린
-            SK_COLORS['competitor_2'], # 파스텔 블루
-            SK_COLORS['competitor_3'], # 파스텔 옐로우
-            SK_COLORS['competitor_4'], # 파스텔 퍼플
-            SK_COLORS['competitor_5'], # 파스텔 오렌지
-            SK_COLORS['competitor_6'], # 파스텔 민트
+            SK_COLORS['competitor_green'],  # 파스텔 그린
+            SK_COLORS['competitor_blue'],   # 파스텔 블루
+            SK_COLORS['competitor_yellow'], # 파스텔 옐로우
+            SK_COLORS['competitor_purple'], # 파스텔 퍼플
+            SK_COLORS['competitor_orange'], # 파스텔 오렌지
+            SK_COLORS['competitor_mint'],   # 파스텔 민트
         ]
         
         # SK가 아닌 회사들의 인덱스 계산
