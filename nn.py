@@ -1934,11 +1934,10 @@ def create_enhanced_pdf_report(
         return tbl
     # ---------- 2. 폰트 등록 ----------
 # 3-1. 사용할 글꼴 경로(윈도·mac·리눅스) ― 필요한 것만 남겨도 무방
-def register_fonts():
-    # ---------- 2. 폰트 등록 ----------
+# ---------- 2. 폰트 등록 ----------
     font_paths = {
-        "Korean": [
-            "C:/Windows/Fonts/malgun.ttf",
+        "Korean": [                                 # ← 추가
+            "C:/Windows/Fonts/malgun.ttf",          # 본문용 가변-폭
             "/System/Library/Fonts/AppleSDGothicNeo.ttc",
             "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"
         ],
@@ -1952,14 +1951,16 @@ def register_fonts():
         ]
     }
 
-    for font_name, paths in font_paths.items():
-        for path in paths:
-            if os.path.exists(path):
+    for name, paths in font_paths.items():
+        for p in paths:
+            if os.path.exists(p):
                 try:
-                    pdfmetrics.registerFont(TTFont(font_name, path))
-                    break  # 성공적으로 등록되면 다음 폰트로
+                    pdfmetrics.registerFont(TTFont(name, p))
                 except Exception:
-                    pass  # 등록 실패해도 무시하고 다음 경로 시도
+                    # 이미 등록돼 있거나 다른 이유로 실패한 경우 무시
+                    pass
+                break  # 첫 번째로 성공(또는 시도)한 경로 뒤에는 반복 종료
+
     # ---------- 3. 스타일 ----------
     styles = getSampleStyleSheet()
     TITLE_STYLE = ParagraphStyle(
@@ -2289,24 +2290,21 @@ def register_fonts():
     except Exception as e:
         st.error(f"PDF 생성 오류: {e}")
         return None
-        
+
 def create_excel_report(financial_data=None, news_data=None, insights=None):
     """Excel 보고서 생성"""
     try:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            sheet_created = False
-
             # 재무분석 시트
             if financial_data is not None and not financial_data.empty:
+                # '_원시값' 컬럼 제거
                 clean_financial = financial_data[[col for col in financial_data.columns if not col.endswith('_원시값')]]
                 clean_financial.to_excel(writer, sheet_name='재무분석', index=False)
-                sheet_created = True
             
             # 뉴스분석 시트
             if news_data is not None and not news_data.empty:
                 news_data.to_excel(writer, sheet_name='뉴스분석', index=False)
-                sheet_created = True
             
             # 인사이트 시트
             if insights:
@@ -2315,11 +2313,6 @@ def create_excel_report(financial_data=None, news_data=None, insights=None):
                     '내용': [str(insights)]
                 })
                 insight_df.to_excel(writer, sheet_name='AI인사이트', index=False)
-                sheet_created = True
-
-            # 모든 시트가 없을 경우 기본 시트 생성
-            if not sheet_created:
-                pd.DataFrame({"메시지": ["데이터가 없습니다."]}).to_excel(writer, sheet_name='빈 보고서', index=False)
         
         output.seek(0)
         return output.getvalue()
